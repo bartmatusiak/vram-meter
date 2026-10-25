@@ -1,0 +1,55 @@
+# VRAM Meter
+
+Shows how much of each GPU's memory is in use and which apps hold it, in the look of Call of Duty's
+VRAM meter; ends apps; and picks the GPU each app runs on.
+
+## Installing
+
+Windows 10/11, no admin needed. Needs the .NET 10 SDK to build (`winget install Microsoft.DotNet.SDK.10`);
+the installed app needs nothing.
+
+```
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
+
+It builds one self-contained `VramMeter.exe` into `%LOCALAPPDATA%\Programs\VRAM Meter`, adds it to the
+Start menu, starts it with Windows in the tray, and lists it in Settings > Apps > Installed apps
+(uninstall there, or `install.ps1 -Remove`). Rerun it after changing the source.
+
+## Using it
+
+- **The meter**: one bar per GPU. Green is the app you're measuring (the biggest, until you click
+  another), white is everything else, from the card's own total.
+- **Apps**: every app holding GPU memory. *Overcounted* marks an app reporting more than its card has
+  in use: overlays, recorders and Windows' compositor are charged for the screens they borrow.
+- **GPU**: Let Windows decide, Power saving or High performance. This is Windows' own per-app
+  setting (Settings > System > Display > Graphics), so it lasts, and an app takes it up the next time
+  it starts. Power saving is a second GPU only when one is on (a CPU's graphics, enabled in the BIOS).
+- **Sort apps between GPUs**: keeps games on the high performance GPU and moves everything else to the
+  power saving one, after showing the plan with each move ticked. Capture and overlay tools (OBS,
+  NVIDIA's overlay, Discord clips) stay with the games. A game is an .exe Windows' Game Bar has
+  detected as one, or one in a game library (Steam, EA, Epic, GOG, Ubisoft, Riot, Xbox). Its option
+  to keep sorting sorts each new app as it first uses a GPU; apps you've set yourself are left alone.
+  On a built-in GPU the meter counts the system RAM it borrows, since that is its memory.
+- **End**: closes every process of the app, after you confirm.
+- **Tray**: the icon is a small live meter; hover for the figures, click for the window, right-click
+  for Start with Windows and Exit. Closing the window leaves it in the tray.
+
+## Safety
+
+- No network and no server: nothing outside the app can ask it to do anything.
+- Runs as you, never as administrator, so it can only end what you could end in Task Manager.
+- Won't end Windows' own processes, services, anything Windows marks critical, or itself.
+- Ends a process only after checking, through the same handle it ends it with, that it is the same
+  .exe started at the same moment as the one listed, so a reused process ID can't be hit.
+- Confirming needs a click: Cancel has the focus and Enter doesn't confirm.
+- Writes only to your own registry: its GPU choices (just the `GpuPreference` entry, keeping Auto HDR
+  and the rest), its startup entry and its uninstall entry.
+
+## Files
+
+- `src/`: the app (WPF on .NET 10). `Gpus.cs` reads the GPUs (DirectX) and the GPU memory counters;
+  `Processes.cs` names and ends processes; `GpuPreferences.cs` sets an app's GPU; `Tray.cs` the tray
+  icon; `MainWindow.xaml` the window.
+- `src/make-icon.ps1`: draws `VramMeter.ico`.
+- `install.ps1`: builds and installs; `-Remove` uninstalls.

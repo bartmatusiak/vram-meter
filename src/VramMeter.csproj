@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- For the tray icon (NotifyIcon); WPF has none. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>VramMeter</RootNamespace>
+    <AssemblyName>VramMeter</AssemblyName>
+    <ApplicationIcon>..\VramMeter.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Product>VRAM Meter</Product>
+    <AssemblyTitle>VRAM Meter</AssemblyTitle>
+    <Description>Shows which apps use the GPU's memory, ends them, and moves them between GPUs</Description>
+    <Authors>Bart Matusiak</Authors>
+    <Version>2.0.0</Version>
+
+    <!-- One VramMeter.exe that needs nothing installed to run. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <!-- WinForms (the tray) would rather set DPI in code; the WPF window needs it in app.manifest. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="..\VramMeter.ico" Link="VramMeter.ico" />
+  </ItemGroup>
+
+</Project>

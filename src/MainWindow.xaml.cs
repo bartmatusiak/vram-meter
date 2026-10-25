@@ -1,0 +1,351 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+
+namespace VramMeter;
+
+public partial class MainWindow : Window, INotifyPropertyChanged
+{
+    readonly GpuMonitor monitor = new();
+    readonly DispatcherTimer timer = new();
+    readonly DispatcherTimer statusTimer = new() { Interval = TimeSpan.FromSeconds(10) };
+    readonly Settings settings = Settings.Load();
+    bool reading;
+
+    public Settings Settings => settings;
+    string status = "", note = "";
+    Brush statusBrush = Format.Res("Focus");
+
+    public ObservableCollection<MeterVm> Meters { get; } = new();
+    public ObservableCollection<AppRowVm> Apps { get; } = new();
+    public Snapshot? Last { get; private set; }
+    public bool Exiting { get; set; }
+
+    // The main GPU's figures, for the tray: bytes for the focus app, everyone else, and the card.
+    public event Action<long, long, long, string?>? Reading;
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string Status { get => status; set { status = value; Raise(nameof(Status)); Raise(nameof(StatusVisibility)); } }
+    public Visibility StatusVisibility => status.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    public Brush StatusBrush { get => statusBrush; set { statusBrush = value; Raise(nameof(StatusBrush)); } }
+    public string Note { get => note; set { note = value; Raise(nameof(Note)); Raise(nameof(NoteVisibility)); } }
+    public Visibility NoteVisibility => note.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    // The two GPUs sorting moves apps between, when there are two.
+    (Gpu Low, Gpu High)? Pair
+    {
+        get
+        {
+            var low = Last?.Gpus.FirstOrDefault(g => g.PowerSaving);
+            var high = Last?.Gpus.FirstOrDefault(g => g.HighPerformance);
+            return low != null && high != null && low.Luid != high.Luid ? (low, high) : null;
+        }
+    }
+    public bool CanSort => Pair != null;
+    public string SortTip => CanSort
+        ? "Keep games on the fast GPU and move everything else to the other one"
+        : "Only one GPU is on. Turn on the CPU's graphics in the BIOS to sort apps between two.";
+    public string AutoSortText => settings.AutoSort ? "NEW APPS: SORTED AUTOMATICALLY" : "NEW APPS: LEFT AS THEY ARE";
+
+    // Tells the tray, when the window is hidden, what auto-sort just moved.
+    public event Action<string>? AutoSorted;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        DataContext = this;
+        Grain.Fill = GrainBrush();
+        timer.Tick += async (_, _) => await Refresh();
+        statusTimer.Tick += (_, _) => { Status = ""; statusTimer.Stop(); };
+        IsVisibleChanged += (_, _) => Pace();
+        Pace();
+        timer.Start();
+        _ = Refresh();
+    }
+
+    void Raise(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    // Every 1.5 s while you're looking, every 4 s for the tray icon alone.
+    void Pace() => timer.Interval = TimeSpan.FromSeconds(IsVisible ? 1.5 : 4);
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        // A dark title bar in the page's black.
+        var hwnd = new WindowInteropHelper(this).Handle;
+        int dark = 1, caption = 0x000B0C0B;
+        DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int));
+        DwmSetWindowAttribute(hwnd, 35, ref caption, sizeof(int));
+    }
+
+    // Closing the window leaves VRAM Meter in the tray; Exit is on the tray icon.
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!Exiting)
+        {
+            e.Cancel = true;
+            Hide();
+        }
+        base.OnClosing(e);
+    }
+
+    async Task Refresh()
+    {
+        if (reading) return;
+        reading = true;
+        try
+        {
+            var s = await Task.Run(monitor.Read);
+            Last = s;
+            Raise(nameof(CanSort));
+            Raise(nameof(SortTip));
+            AutoSort(s);
+            Draw(s);
+        }
+        catch (Exception ex)
+        {
+            Note = "No reading from Windows' GPU counters: " + ex.Message;
+        }
+        finally { reading = false; }
+    }
+
+    void Draw(Snapshot s)
+    {
+        // An app reporting more than its whole card has in use counts other apps' surfaces it
+        // captures or draws over (overlays, recorders, the desktop's compositor) as its own.
+        bool Over(AppGroup a) => a.Dedicated.Any(d => d.Value > s.Used.GetValueOrDefault(d.Key));
+
+        // Meters: every GPU in use, or the first when none is.
+        var shown = s.Gpus.Where(g => s.Used.GetValueOrDefault(g.Luid) > 0).ToList();
+        if (shown.Count == 0 && s.Gpus.Count > 0) shown.Add(s.Gpus[0]);
+        Sync(Meters, shown, g => g.Luid, m => m.Luid, g => new MeterVm { Luid = g.Luid });
+        var focusKeys = new HashSet<string>();
+        bool first = true;
+        foreach (var g in shown)
+        {
+            long used = s.Used.GetValueOrDefault(g.Luid);
+            var candidates = s.Apps.Where(a => a.Dedicated.GetValueOrDefault(g.Luid) > 0 && !Over(a)).ToList();
+            var focus = candidates.FirstOrDefault(a => a.Key == settings.Focus)
+                        ?? candidates.OrderByDescending(a => a.Dedicated[g.Luid]).FirstOrDefault();
+            long focusBytes = focus == null ? 0 : Math.Min(focus.Dedicated[g.Luid], used);
+            if (focus != null) focusKeys.Add(focus.Key);
+            Meters.First(m => m.Luid == g.Luid).Update(g, used, Math.Max(g.Total, used), focus?.Title, focusBytes);
+            if (first) Reading?.Invoke(focusBytes, Math.Max(0, used - focusBytes), Math.Max(g.Total, used), focus?.Title);
+            first = false;
+        }
+
+        long maxPlain = s.Apps.Where(a => !Over(a)).Select(a => a.TotalDedicated).DefaultIfEmpty(1).Max();
+        Sync(Apps, s.Apps, a => a.Key, r => r.Key, a => new AppRowVm { Key = a.Key });
+        foreach (var a in s.Apps)
+        {
+            var pref = a.Path != null ? GpuPreferences.Get(a.Path) : GpuChoice.Auto;
+            Apps.First(r => r.Key == a.Key).Update(a, s, Over(a), focusKeys.Contains(a.Key), maxPlain, pref);
+        }
+
+        var overs = Apps.Where(r => r.IsOver).Select(r => r.App.Title).ToList();
+        Note = overs.Count == 0 ? "" :
+            $"Overcounted: {string.Join(", ", overs)} report more than the whole card has in use, which can't be true. " +
+            "Apps that capture, record or draw over other apps' screens (and Windows' desktop compositor) are charged " +
+            "for every picture they borrow from another app as well. Their real share is lower; the bar uses the card's " +
+            "own total, so nothing is counted twice.";
+    }
+
+    // Brings a list in line with the reading without rebuilding it, so rows keep their place and state.
+    static void Sync<TData, TVm>(ObservableCollection<TVm> list, List<TData> data, Func<TData, object> dataKey,
+        Func<TVm, object> vmKey, Func<TData, TVm> make)
+    {
+        var keys = data.Select(dataKey).ToList();
+        for (int i = list.Count - 1; i >= 0; i--)
+            if (!keys.Contains(vmKey(list[i]))) list.RemoveAt(i);
+        for (int i = 0; i < data.Count; i++)
+        {
+            int at = -1;
+            for (int j = 0; j < list.Count; j++)
+                if (Equals(vmKey(list[j]), keys[i])) { at = j; break; }
+            if (at < 0) list.Insert(i, make(data[i]));
+            else if (at != i) list.Move(at, i);
+        }
+    }
+
+    void Row_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is not AppRowVm row || row.IsOver) return;
+        settings.Focus = row.Key;
+        settings.Save();
+        if (Last != null) Draw(Last);
+    }
+
+    void End_Click(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is not AppRowVm row) return;
+        var app = row.App;
+        int n = app.Procs.Count;
+        string what = n > 1 ? $"all {n} of its processes ({app.Name}.exe)" : $"{app.Name}.exe";
+        if (!HudDialog.Ask(this, $"END {app.Title.ToUpperInvariant()}?",
+                $"This closes {what} straight away, like End task in Task Manager. Anything unsaved in it is lost.",
+                "END IT", danger: true))
+            return;
+        try
+        {
+            var r = Processes.End(app);
+            if (r.Refused.Count > 0)
+                Say($"{app.Title}: ended {r.Ended}, Windows refused {r.Refused.Count}. It may run as administrator; VRAM Meter never does, so end it from Task Manager.", warn: true);
+            else
+                Say($"Ended {app.Title}.");
+        }
+        catch (Exception ex) { Say($"Couldn't end {app.Title}: {ex.Message}", warn: true); }
+        _ = Refresh();
+    }
+
+    void Gpu_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.DataContext is not AppRowVm row || row.App.Path == null || Last == null) return;
+        var app = row.App;
+        var current = GpuPreferences.Get(app.Path);
+        var low = Last.Gpus.FirstOrDefault(g => g.PowerSaving);
+        var high = Last.Gpus.FirstOrDefault(g => g.HighPerformance);
+        bool oneGpu = low == null || high == null || low.Luid == high.Luid;
+
+        var menu = new ContextMenu { PlacementTarget = button, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        void Add(GpuChoice choice, string header)
+        {
+            var item = new MenuItem { Header = Text(header, 14), IsChecked = current == choice };
+            item.Click += (_, _) => Move(app, choice, choice switch
+            {
+                GpuChoice.PowerSaving => low?.Name,
+                GpuChoice.HighPerformance => high?.Name,
+                _ => null,
+            });
+            menu.Items.Add(item);
+        }
+        Add(GpuChoice.Auto, "LET WINDOWS DECIDE");
+        Add(GpuChoice.PowerSaving, "POWER SAVING  ·  " + (low?.ShortName ?? "none").ToUpperInvariant());
+        Add(GpuChoice.HighPerformance, "HIGH PERFORMANCE  ·  " + (high?.ShortName ?? "none").ToUpperInvariant());
+        if (oneGpu)
+        {
+            menu.Items.Add(new MenuItem
+            {
+                IsEnabled = false,
+                Header = Text("Only one GPU is on, so both choices are the same card. Turn on the CPU's graphics in the BIOS to split them; the choice is kept until then.", 12, 300),
+            });
+        }
+        menu.IsOpen = true;
+    }
+
+    static TextBlock Text(string text, double size, double wrap = 0)
+    {
+        var t = new TextBlock { Text = text, FontSize = size };
+        if (wrap > 0)
+        {
+            t.TextWrapping = TextWrapping.Wrap;
+            t.MaxWidth = wrap;
+            t.FontFamily = (FontFamily)Application.Current.Resources["Plain"];
+        }
+        return t;
+    }
+
+    void Sort_Click(object sender, RoutedEventArgs e)
+    {
+        if (Last == null || Pair is not var (low, high)) return;
+        var plan = Sorter.Plan(Last.Apps);
+        var answer = SortDialog.Ask(this, plan, low, high, settings.AutoSort);
+        if (answer == null) return;
+        settings.AutoSort = answer.AutoSort;
+        int moved = 0;
+        var failed = new List<string>();
+        foreach (var step in answer.Chosen)
+        {
+            try
+            {
+                GpuPreferences.Set(step.App.Path!, step.To);
+                settings.Decided.Add(step.App.Path!);
+                moved++;
+            }
+            catch (Exception ex) { failed.Add($"{step.App.Title} ({ex.Message})"); }
+        }
+        // Unticked apps count as decided too: auto-sort won't move them behind your back.
+        foreach (var step in plan.Except(answer.Chosen)) settings.Decided.Add(step.App.Path!);
+        settings.Save();
+        Raise(nameof(AutoSortText));
+        if (failed.Count > 0) Say($"Moved {moved}; couldn't move {string.Join(", ", failed)}.", warn: true);
+        else if (moved > 0) Say($"Moved {moved} app{(moved == 1 ? "" : "s")}. Each switches GPU the next time it starts.");
+        Draw(Last);
+    }
+
+    // New apps, as they first use a GPU: sorted like Sort would, unless you've set them yourself.
+    void AutoSort(Snapshot s)
+    {
+        if (!settings.AutoSort || Pair is not var (low, _)) return;
+        var moved = new List<string>();
+        foreach (var app in s.Apps)
+        {
+            if (app.Path == null || app.ProtectedWhy != null || settings.Decided.Contains(app.Path)) continue;
+            settings.Decided.Add(app.Path);
+            if (GpuPreferences.Get(app.Path) != GpuChoice.Auto) continue;  // set elsewhere: leave it
+            var to = Sorter.Target(Sorter.Classify(app).Kind);
+            try
+            {
+                GpuPreferences.Set(app.Path, to);
+                if (to == GpuChoice.PowerSaving) moved.Add(app.Title);
+            }
+            catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException or System.Security.SecurityException) { }
+        }
+        settings.Save();
+        if (moved.Count == 0) return;
+        string text = $"Moved {string.Join(", ", moved)} to the {low.ShortName} from {(moved.Count == 1 ? "its" : "their")} next start.";
+        Say(text);
+        if (!IsVisible) AutoSorted?.Invoke(text);
+    }
+
+    void Move(AppGroup app, GpuChoice choice, string? gpuName)
+    {
+        try
+        {
+            GpuPreferences.Set(app.Path!, choice);
+            settings.Decided.Add(app.Path!);
+            settings.Save();
+            string where = choice == GpuChoice.Auto ? "the GPU Windows picks" : gpuName ?? "that GPU";
+            Say($"{app.Title} will run on {where} from the next time it starts (kept in Windows' Graphics settings). End it and open it again to switch now.");
+        }
+        catch (Exception ex) { Say($"Couldn't set {app.Title}'s GPU: {ex.Message}", warn: true); }
+        if (Last != null) Draw(Last);
+    }
+
+    void Say(string text, bool warn = false)
+    {
+        Status = text.ToUpperInvariant();
+        StatusBrush = Format.Res(warn ? "Warn" : "Focus");
+        statusTimer.Stop();
+        statusTimer.Start();
+    }
+
+    static ImageBrush GrainBrush()
+    {
+        const int size = 160;
+        var rng = new Random(7);
+        var px = new byte[size * size * 4];
+        for (int i = 0; i < px.Length; i += 4)
+        {
+            byte v = (byte)rng.Next(256);
+            px[i] = px[i + 1] = px[i + 2] = v;
+            px[i + 3] = 255;
+        }
+        var bmp = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgra32, null, px, size * 4);
+        bmp.Freeze();
+        return new ImageBrush(bmp) { TileMode = TileMode.Tile, Viewport = new Rect(0, 0, size, size), ViewportUnits = BrushMappingMode.Absolute };
+    }
+
+    [DllImport("dwmapi.dll")]
+    static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+}
