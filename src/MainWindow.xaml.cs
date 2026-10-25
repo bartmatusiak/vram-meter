@@ -223,15 +223,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             });
             menu.Items.Add(item);
         }
-        Add(GpuChoice.Auto, "LET WINDOWS DECIDE");
-        Add(GpuChoice.PowerSaving, "POWER SAVING  ·  " + (low?.ShortName ?? "none").ToUpperInvariant());
-        Add(GpuChoice.HighPerformance, "HIGH PERFORMANCE  ·  " + (high?.ShortName ?? "none").ToUpperInvariant());
+        // By the GPU's name; Windows stores them as High performance and Power saving.
+        if (high != null) Add(GpuChoice.HighPerformance, high.ShortName.ToUpperInvariant());
+        if (low != null && !oneGpu) Add(GpuChoice.PowerSaving, low.ShortName.ToUpperInvariant());
+        Add(GpuChoice.Auto, "AUTO  ·  WINDOWS PICKS");
         if (oneGpu)
         {
             menu.Items.Add(new MenuItem
             {
                 IsEnabled = false,
-                Header = Text("Only one GPU is on, so both choices are the same card. Turn on the CPU's graphics in the BIOS to split them; the choice is kept until then.", 12, 300),
+                Header = Text("Only one GPU is on. Turn on the CPU's graphics in the BIOS to move apps to it.", 12, 300),
             });
         }
         menu.IsOpen = true;

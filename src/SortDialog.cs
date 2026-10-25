@@ -67,8 +67,8 @@ public sealed class SortDialog : Window
         lanes.ColumnDefinitions.Add(new ColumnDefinition());
         lanes.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
         lanes.ColumnDefinitions.Add(new ColumnDefinition());
-        lanes.Children.Add(Lane(high, "HIGH PERFORMANCE", highList, 0));
-        lanes.Children.Add(Lane(low, "POWER SAVING", lowList, 2));
+        lanes.Children.Add(Lane(high, "GAMES", highList, 0));
+        lanes.Children.Add(Lane(low, "EVERYTHING ELSE", lowList, 2));
 
         summary = new TextBlock { FontSize = 13, Foreground = Format.Res("Dim"), Margin = new Thickness(0, 16, 0, 0) };
         auto = new CheckBox

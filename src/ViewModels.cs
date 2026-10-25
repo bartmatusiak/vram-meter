@@ -137,8 +137,8 @@ public sealed class AppRowVm : Observable
         NowOnBrush = Format.Res(astray ? "Warn" : "Dim");
         Choice = pref switch
         {
-            GpuChoice.PowerSaving => "POWER SAVING",
-            GpuChoice.HighPerformance => "HIGH PERFORMANCE",
+            GpuChoice.PowerSaving => s.Gpus.FirstOrDefault(g => g.PowerSaving)?.ShortName.ToUpperInvariant() ?? "POWER SAVING",
+            GpuChoice.HighPerformance => s.Gpus.FirstOrDefault(g => g.HighPerformance)?.ShortName.ToUpperInvariant() ?? "HIGH PERFORMANCE",
             _ => "AUTO",
         };
 

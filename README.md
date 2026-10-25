@@ -26,14 +26,14 @@ Start menu and the desktop, starts it with Windows in the tray, and lists it in 
   borrow, reaching dozens of GB on a 16 GB card). An app drawn on one GPU and shown on a screen
   plugged into the other keeps a little on that one for the frames it hands over: ON RADEON +0.04 GB
   RTX 5080.
-- **GPU**: Let Windows decide, Power saving or High performance. This is Windows' own per-app
-  setting (Settings > System > Display > Graphics), so it lasts, and an app takes it up the next time
+- **GPU**: a GPU by name, or Auto. This is Windows' own per-app setting (Settings > System >
+  Display > Graphics, where the GPUs are called High performance and Power saving), so it lasts, and an app takes it up the next time
   it starts: restart the PC to switch everything cleanly. Power saving is a second GPU only when one
   is on (a CPU's graphics, enabled in the BIOS). Where an app runs turns amber when it's set to one
   GPU but running on the other: it started before the setting, or, opened at sign-in, before a
   built-in GPU's driver was ready; closing and reopening it moves it.
 - **Which GPU runs what**: a column per GPU with every app that can move in the one it will run on:
-  games on the high performance GPU, everything else on the power saving one, capture and overlay
+  games on the fast card, everything else on the other GPU, capture and overlay
   tools (OBS, NVIDIA's overlay, Discord clips) with the games. Click an app to move it across; Apply
   sets them, and a restart of the PC switches them. A game is an .exe Windows' Game Bar has
   detected as one, or one in a game library (Steam, EA, Epic, GOG, Ubisoft, Riot, Xbox). Its option
