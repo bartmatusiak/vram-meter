@@ -89,9 +89,11 @@ public sealed class Overlay : IDisposable
                 (gpu?.ShortName ?? "GPU").ToUpperInvariant(),
                 $"  ·  {d.Cable}  ·  {d.Width}×{d.Height} @ {Math.Round(d.Hz)} HZ",
                 gpu?.Vendor ?? GpuVendor.Other,
-                fpsOn == d.Device && front is var (_, rate, _) ? $"{rate:0} FPS" : null,
-                (game != null ? $"GAME {game.Dedicated[d.Luid] / GB:0.0} GB  ·  " : "") +
-                $"VRAM {used / GB:0.0} / {total / GB:0.0} GB  ·  GPU {busy.GetValueOrDefault(d.Luid):0}%  ·  CPU {r.Cpu:0}%");
+                fpsOn == d.Device && front is var (_, rate, _) ? $"{rate:0}" : "—",
+                $"{busy.GetValueOrDefault(d.Luid):0}%",
+                $"{r.Cpu:0}%",
+                game != null ? $"{game.Dedicated[d.Luid] / GB:0.0} GB" : "—",
+                $"{used / GB:0.0} OF {total / GB:0.0} GB");
             if (!badge.Dragging) Place(badge, d);
         }
     }
@@ -160,9 +162,25 @@ public sealed class Overlay : IDisposable
     {
         readonly Run name = new() { FontSize = 14 };
         readonly Run detail = new() { FontSize = 12 };
-        readonly Run frames = new() { FontSize = 13 };
-        readonly Run use = new() { FontSize = 13 };
+        readonly Run fps = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
         readonly Border mark = new() { Width = 3, Margin = new Thickness(0, 0, 9, 0) };
+
+        // A row of fixed-width cells, each a dim label and its value, so changing figures don't
+        // change the badge's size.
+        static Grid Cells(params (string Label, Run Value, double Width)[] cells)
+        {
+            var g = new Grid { Margin = new Thickness(0, 2, 0, 0) };
+            for (int i = 0; i < cells.Length; i++)
+            {
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(cells[i].Width) });
+                var t = new TextBlock { FontSize = 13 };
+                t.Inlines.Add(new Run(cells[i].Label + " ") { Foreground = Format.Res("Dim"), FontSize = 12 });
+                t.Inlines.Add(cells[i].Value);
+                Grid.SetColumn(t, i);
+                g.Children.Add(t);
+            }
+            return g;
+        }
 
         public string Device { get; }
         public bool Dragging { get; private set; }
@@ -182,17 +200,22 @@ public sealed class Overlay : IDisposable
             Left = -10000;
             Cursor = Cursors.SizeAll;
             ToolTip = "Drag to move: it snaps to edges and corners, or hold Shift to place it exactly. Alt+O shows and hides it.";
-            detail.Foreground = use.Foreground = Format.Res("Dim");
+            detail.Foreground = Format.Res("Dim");
             var first = new TextBlock();
             first.Inlines.Add(name);
             first.Inlines.Add(detail);
-            var second = new TextBlock { Margin = new Thickness(0, 1, 0, 0) };
-            second.Inlines.Add(frames);
-            second.Inlines.Add(use);
             var row = new DockPanel();
             DockPanel.SetDock(mark, Dock.Left);
             row.Children.Add(mark);
-            row.Children.Add(new StackPanel { Children = { first, second } });
+            row.Children.Add(new StackPanel
+            {
+                Children =
+                {
+                    first,
+                    Cells(("FPS", fps, 78), ("GPU", gpuUse, 72), ("CPU", cpu, 72)),
+                    Cells(("GAME", game, 100), ("VRAM", vram, 150)),
+                },
+            });
             Content = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(0xC8, 0x0B, 0x0C, 0x0B)),
@@ -219,12 +242,15 @@ public sealed class Overlay : IDisposable
             };
         }
 
-        public void Set(string gpu, string rest, GpuVendor vendor, string? fpsText, string useText)
+        public void Set(string gpu, string rest, GpuVendor vendor, string fpsText, string gpuText, string cpuText, string gameText, string vramText)
         {
             name.Text = gpu;
             detail.Text = rest;
-            frames.Text = fpsText != null ? fpsText + "  ·  " : "";
-            use.Text = useText;
+            fps.Text = fpsText;
+            gpuUse.Text = gpuText;
+            cpu.Text = cpuText;
+            game.Text = gameText;
+            vram.Text = vramText;
             mark.Background = Format.Res(vendor switch
             {
                 GpuVendor.Nvidia => "NvidiaGreen",
