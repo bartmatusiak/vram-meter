@@ -208,6 +208,8 @@ public sealed class Overlay : IDisposable
     sealed class Badge : Window
     {
         const double LabelSize = 16, ValueSize = 18, Gap = 16;
+        // The labels, cable and dividers: lighter than the window's gray, to read over a game.
+        static readonly Brush LabelBrush = new SolidColorBrush(Color.FromRgb(0xC4, 0xC7, 0xC0));
         readonly Run name = new() { FontSize = ValueSize };
         readonly Run detail = new() { FontSize = ValueSize };
         readonly TextBlock fps = new(), generated = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
@@ -226,7 +228,7 @@ public sealed class Overlay : IDisposable
             {
                 var label = new TextBlock
                 {
-                    Text = cells[i].Label, FontSize = LabelSize, Foreground = Format.Res("Dim"),
+                    Text = cells[i].Label, FontSize = LabelSize, Foreground = LabelBrush,
                     Margin = new Thickness(i == 0 ? 0 : Gap, 0, 5, 0), VerticalAlignment = VerticalAlignment.Bottom,
                 };
                 var value = cells[i].Value;
@@ -264,7 +266,7 @@ public sealed class Overlay : IDisposable
             Left = -10000;
             Cursor = Cursors.SizeAll;
             ToolTip = "Drag to move: it snaps to edges and corners, or hold Shift to place it exactly. Alt+O shows and hides it.";
-            detail.Foreground = Format.Res("Dim");
+            detail.Foreground = LabelBrush;
             var display = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
             display.Inlines.Add(detail);
             Typography.SetNumeralAlignment(display, FontNumeralAlignment.Tabular);
@@ -274,7 +276,7 @@ public sealed class Overlay : IDisposable
             // Measured with 8s: in this face the digits are all one width, and 8 is as wide as any.
             TextBlock Divider() => new()
             {
-                Text = "|", Foreground = Format.Res("Dim"), FontSize = ValueSize, Margin = new Thickness(Gap * 0.8, 0, Gap * 0.8, 0),
+                Text = "|", Foreground = LabelBrush, FontSize = ValueSize, Margin = new Thickness(Gap * 0.8, 0, Gap * 0.8, 0),
                 VerticalAlignment = VerticalAlignment.Center,
             };
             // FPS, FG and GAME only while a game is running (see Set).
