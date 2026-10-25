@@ -95,7 +95,8 @@ public sealed class Overlay : IDisposable
                 $"{busy.GetValueOrDefault(d.Luid):0}%",
                 $"{r.Cpu:0}%",
                 game != null ? $"{game.Dedicated[d.Luid] / GB:0.0} GB" : "—",
-                $"{100.0 * used / Math.Max(1, total):0}% OF {total / GB:0.0} GB");
+                $"{100.0 * used / Math.Max(1, total):0}%",
+                $"OF {total / GB:0.0} GB");
             if (!badge.Dragging) Place(badge, d);
         }
     }
@@ -195,6 +196,8 @@ public sealed class Overlay : IDisposable
         readonly Run name = new() { FontSize = ValueSize };
         readonly Run detail = new() { FontSize = ValueSize };
         readonly TextBlock fps = new(), generated = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
+        // The card's size after VRAM's share: fixed for a display, so it needs no slot of its own.
+        readonly TextBlock vramOf = new() { FontSize = ValueSize, Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Bottom };
         readonly StackPanel frames, gameCell;
         readonly TextBlock framesDivider;
 
@@ -271,7 +274,7 @@ public sealed class Overlay : IDisposable
                 {
                     frames, framesDivider,
                     Cells(("GPU", gpuUse, new[] { "100%" }), ("CPU", cpu, new[] { "100%" })), Divider(),
-                    gameCell, Cells(("VRAM", vram, new[] { "100% OF 88.8 GB" })), Divider(),
+                    gameCell, Cells(("VRAM", vram, new[] { "100%" })), vramOf, Divider(),
                     display, Divider(), gpuName,
                 },
             };
@@ -302,7 +305,7 @@ public sealed class Overlay : IDisposable
             };
         }
 
-        public void Set(string gpu, string rest, GpuVendor vendor, bool inGame, string fpsText, string generatedText, string gpuText, string cpuText, string gameText, string vramText)
+        public void Set(string gpu, string rest, GpuVendor vendor, bool inGame, string fpsText, string generatedText, string gpuText, string cpuText, string gameText, string vramText, string vramOfText)
         {
             var shown = inGame ? Visibility.Visible : Visibility.Collapsed;
             frames.Visibility = framesDivider.Visibility = gameCell.Visibility = shown;
@@ -314,6 +317,7 @@ public sealed class Overlay : IDisposable
             cpu.Text = cpuText;
             game.Text = gameText;
             vram.Text = vramText;
+            vramOf.Text = vramOfText;
         }
 
         // In physical pixels, so it lands right whatever each display's scaling.
