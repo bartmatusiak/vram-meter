@@ -102,7 +102,7 @@ public sealed class MeterVm : Observable
 
         var m = r.Monitors.Where(x => x.Luid == gpu.Luid).Select(x =>
             $"{x.Name.ToUpperInvariant()}  ·  {Displays.CableName(x.Cable)}  ·  " +
-            (x.Showing is { } s ? $"{s.Width}×{s.Height} @ {System.Math.Round(s.Hz)} HZ" + (x.Main ? "  ·  MAIN" : "") : "CONNECTED, OFF")).ToList();
+            (x.Showing is { } s ? $"{s.Width}×{s.Height} @ {System.Math.Round(s.Hz)} HZ" : "CONNECTED")).ToList();
         if (m.Count == 0) m.Add("NO MONITOR PLUGGED IN");
         if (!Monitors.SequenceEqual(m)) Monitors = m;
     }
