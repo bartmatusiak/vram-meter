@@ -38,7 +38,9 @@ Run it from anywhere, or install it properly with `install.ps1` (below).
 - **Displays**: with a monitor cabled to both GPUs, switch which GPU's display is main (apps start on
   that GPU), and optionally start Windows on the built-in GPU's display, so the apps that start with
   Windows land there, then show only the card's display once they're up (not saved, so every boot
-  starts the same way). See the Windows issue below for why.
+  starts the same way). See the Windows issue below for why. The monitor's input follows, over
+  DDC/CI (on in the monitor's menu): to the cable of the GPU whose display is showing. Which HDMI port
+  a cable is in is learned from what the monitor reports; HDMI 1 until then.
 - **Overlay**: a badge on each display: its GPU and cable (with one monitor on two inputs, which one
   you're looking at), resolution and refresh rate; then the game's FPS and memory, the GPU's memory,
   and GPU and CPU use. The game is the app in front if it's using that GPU, else the biggest game on
