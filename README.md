@@ -21,8 +21,11 @@ Start menu, starts it with Windows in the tray, and lists it in Settings > Apps 
 - **The meter**: one bar per GPU. Green is the app you're measuring (the biggest game running, or
   the app you click, until the window closes or you click it again), white is everything else, from
   the card's own total.
-- **Apps**: every app holding GPU memory. *Overcounted* marks an app reporting more than its card has
-  in use: overlays, recorders and Windows' compositor are charged for the screens they borrow.
+- **Apps**: every app holding GPU memory, by what sits in the GPU's own memory (Windows' Local Usage;
+  its Dedicated Usage also charges recorders, overlays and the compositor for every screen they
+  borrow, reaching dozens of GB on a 16 GB card). An app drawn on one GPU and shown on a screen
+  plugged into the other keeps a little on that one for the frames it hands over: ON RADEON +0.04 GB
+  RTX 5080.
 - **GPU**: Let Windows decide, Power saving or High performance. This is Windows' own per-app
   setting (Settings > System > Display > Graphics), so it lasts, and an app takes it up the next time
   it starts. Power saving is a second GPU only when one is on (a CPU's graphics, enabled in the BIOS).
