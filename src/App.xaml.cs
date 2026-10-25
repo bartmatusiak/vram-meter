@@ -31,6 +31,9 @@ public partial class App : Application
             Shutdown();
             return;
         }
+        // Started at sign-in: log the first minutes of the GPUs (see SignInLog).
+        if (trayOnly || e.Args.Contains("--sign-in-log")) SignInLog.Start();
+
         showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
         ThreadPool.RegisterWaitForSingleObject(showEvent, (_, _) => Dispatcher.BeginInvoke(ShowWindow), null, -1, false);
 

@@ -78,6 +78,32 @@ static unsafe class Dxgi
         return gpus;
     }
 
+    // The GPUs in the order an app that asks for none gets them (IDXGIFactory1::EnumAdapters1, slot 12).
+    public static List<(string Name, long Luid)> DefaultOrder()
+    {
+        var order = new List<(string, long)>();
+        IntPtr factory;
+        Guid iid = IID_IDXGIFactory6;
+        if (CreateDXGIFactory2(0, &iid, &factory) < 0) return order;
+        try
+        {
+            var fn = (delegate* unmanaged<IntPtr, uint, IntPtr*, int>)(*(*(void***)factory + 12));
+            for (uint i = 0; ; i++)
+            {
+                IntPtr adapter;
+                if (fn(factory, i, &adapter) < 0 || adapter == IntPtr.Zero) break;
+                try
+                {
+                    var d = Desc(adapter);
+                    order.Add((new string(d.Description), ((long)d.LuidHigh << 32) | d.LuidLow));
+                }
+                finally { Marshal.Release(adapter); }
+            }
+        }
+        finally { Marshal.Release(factory); }
+        return order;
+    }
+
     static long? FirstLuid(IntPtr factory, int preference)
     {
         if (!Enum(factory, 0, preference, out var adapter)) return null;
@@ -191,7 +217,7 @@ public sealed class GpuMonitor
     }
 
     // "pid_44252_luid_0x00000000_0x0002BB96_phys_0" -> 44252 and the LUID (high part, then low)
-    static bool Parse(string instance, out int pid, out long luid)
+    internal static bool Parse(string instance, out int pid, out long luid)
     {
         pid = 0;
         luid = 0;
