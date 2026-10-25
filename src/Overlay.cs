@@ -93,7 +93,7 @@ public sealed class Overlay : IDisposable
                 $"{busy.GetValueOrDefault(d.Luid):0}%",
                 $"{r.Cpu:0}%",
                 game != null ? $"{game.Dedicated[d.Luid] / GB:0.0} GB" : "—",
-                $"{used / GB:0.0} OF {total / GB:0.0} GB");
+                $"{100.0 * used / Math.Max(1, total):0}% OF {total / GB:0.0} GB");
             if (!badge.Dragging) Place(badge, d);
         }
     }
@@ -207,13 +207,18 @@ public sealed class Overlay : IDisposable
             var row = new DockPanel();
             DockPanel.SetDock(mark, Dock.Left);
             row.Children.Add(mark);
+            // Line one: the GPU and display, then its memory in a fixed cell; line two: the figures.
+            var top = new Grid();
+            top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var memory = Cells(("VRAM", vram, 128));
+            memory.Margin = new Thickness(18, 1, 0, 0);
+            Grid.SetColumn(memory, 1);
+            top.Children.Add(first);
+            top.Children.Add(memory);
             row.Children.Add(new StackPanel
             {
-                Children =
-                {
-                    first,
-                    Cells(("FPS", fps, 64), ("GPU", gpuUse, 70), ("CPU", cpu, 66), ("GAME", game, 96), ("VRAM", vram, 142)),
-                },
+                Children = { top, Cells(("FPS", fps, 64), ("GPU", gpuUse, 70), ("CPU", cpu, 66), ("GAME", game, 96)) },
             });
             Content = new Border
             {
