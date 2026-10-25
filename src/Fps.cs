@@ -27,6 +27,7 @@ public sealed class Fps : IDisposable
     const int DxgiPresentStart = 42, DxgiPresentMpoStart = 55, D3D9PresentStart = 1;
     const int ReflexPresentStart = 4;  // PCLStats' PRESENT_START marker: one per frame the game renders
     const double Window = 1000;  // ms, RivaTuner's default averaging interval
+    const double GeneratedWindow = 3000;  // ms, for the share generated
 
     // Present times (ms, from the trace) per process and swap chain.
     readonly Dictionary<(int Pid, ulong Chain), Queue<double>> presents = new();
@@ -34,6 +35,8 @@ public sealed class Fps : IDisposable
     readonly Dictionary<int, Queue<double>> rendered = new();
     // When each process's frames last arrived, by the clock (batches come about once a second).
     readonly Dictionary<int, long> arrived = new();
+    // Each process's last frame generation share, and when, held through a second without markers.
+    readonly Dictionary<int, (double Share, long At)> lastGenerated = new();
     TraceEventSession? session;
 
     // Why there's no FPS, when there isn't.
@@ -93,7 +96,7 @@ public sealed class Fps : IDisposable
                 {
                     if (!rendered.TryGetValue(e.ProcessID, out var q)) rendered[e.ProcessID] = q = new();
                     q.Enqueue(t);
-                    while (q.Count > 0 && t - q.Peek() > Window * 2) q.Dequeue();
+                    while (q.Count > 0 && t - q.Peek() > GeneratedWindow + Window) q.Dequeue();
                 }
             };
             session.Source.AllEvents += e =>
@@ -111,7 +114,7 @@ public sealed class Fps : IDisposable
                     var key = (e.ProcessID, chain);
                     if (!presents.TryGetValue(key, out var q)) presents[key] = q = new();
                     q.Enqueue(t);
-                    while (q.Count > 0 && t - q.Peek() > Window * 2) q.Dequeue();
+                    while (q.Count > 0 && t - q.Peek() > GeneratedWindow + Window) q.Dequeue();
                     arrived[e.ProcessID] = Environment.TickCount64;
                 }
             };
@@ -155,10 +158,11 @@ public sealed class Fps : IDisposable
             double? generated = null;
             if (rendered.TryGetValue(pid, out var own) && own.Count > 1)
             {
-                // Presented against rendered over the very same second: ending where both have frames.
+                // Presented against rendered over the very same span, ending where both have frames: 3 s,
+                // so frame generation pausing itself for a moment (menus, camera cuts) doesn't jolt it.
                 var chain = presents.Where(kv => kv.Key.Pid == pid).OrderByDescending(kv => Rate(kv.Value)).First().Value;
                 double end = Math.Min(chain.Last(), own.Last());
-                int shown = chain.Count(t => t > end - Window && t <= end), made = own.Count(t => t > end - Window && t <= end);
+                int shown = chain.Count(t => t > end - GeneratedWindow && t <= end), made = own.Count(t => t > end - GeneratedWindow && t <= end);
                 if (made > 0 && shown > 0)
                 {
                     // Frame generation makes a whole number of frames per rendered one (2×, 3×, 4×):
@@ -168,6 +172,11 @@ public sealed class Fps : IDisposable
                     generated = n >= 1 && Math.Abs(ratio - n) < 0.25 ? 1 - 1 / n : Math.Clamp(1 - 1 / ratio, 0, 1);
                 }
             }
+            // A second without markers in a game that sends them: keep its last reading for up to 5 s,
+            // rather than flicker to "no markers".
+            long now = Environment.TickCount64;
+            if (generated is double share) lastGenerated[pid] = (share, now);
+            else if (lastGenerated.TryGetValue(pid, out var held) && now - held.At < 5000) generated = held.Share;
             return (best, generated);
         }
     }

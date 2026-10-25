@@ -208,19 +208,12 @@ public sealed class Overlay : IDisposable
             var row = new DockPanel();
             DockPanel.SetDock(mark, Dock.Left);
             row.Children.Add(mark);
-            // Line one: the GPU and display, then its memory in a fixed cell; line two: the figures.
-            var top = new Grid();
-            top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var memory = Cells(("VRAM", vram, 128));
-            memory.Margin = new Thickness(18, 1, 0, 0);
-            Grid.SetColumn(memory, 1);
-            top.Children.Add(first);
-            top.Children.Add(memory);
-            row.Children.Add(new StackPanel
-            {
-                Children = { top, Cells(("FPS", fps, 64), ("FG", generated, 60), ("GPU", gpuUse, 70), ("CPU", cpu, 66), ("GAME", game, 96)) },
-            });
+            // One line: the figures in fixed cells, a divider, then the GPU and display.
+            var figures = Cells(("FPS", fps, 64), ("FG", generated, 60), ("GPU", gpuUse, 70), ("CPU", cpu, 66), ("GAME", game, 96), ("VRAM", vram, 128));
+            figures.Margin = new Thickness(0, 1, 0, 0);
+            var divider = new TextBlock { Text = "|", Foreground = Format.Res("Edge"), FontSize = 14, Margin = new Thickness(4, 0, 14, 0) };
+            figures.VerticalAlignment = divider.VerticalAlignment = first.VerticalAlignment = VerticalAlignment.Center;
+            row.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Children = { figures, divider, first } });
             Content = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(0xC8, 0x0B, 0x0C, 0x0B)),
