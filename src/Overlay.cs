@@ -177,7 +177,7 @@ public sealed class Overlay : IDisposable
 
     sealed class Badge : Window
     {
-        const double LabelSize = 14, ValueSize = 16, Gap = 14;
+        const double LabelSize = 16, ValueSize = 18, Gap = 16;
         readonly Run name = new() { FontSize = ValueSize };
         readonly Run detail = new() { FontSize = LabelSize };
         readonly Run fps = new(), generated = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
