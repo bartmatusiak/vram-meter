@@ -36,7 +36,7 @@
                 <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom">
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <!-- This GPU's display: showing now, or a button to switch to it -->
-                    <TextBlock Text="● SHOWING" FontSize="13" Foreground="{StaticResource Focus}" VerticalAlignment="Center" Margin="0,0,16,0"
+                    <TextBlock Text="● USING THIS GPU" FontSize="13" Foreground="{StaticResource Focus}" VerticalAlignment="Center" Margin="0,0,16,0"
                                Visibility="{Binding ShowingVisibility}" ToolTip="Your monitor is showing this GPU's display: apps opened now start on it."/>
                     <Button Style="{StaticResource HudButton}" Click="SwitchHere_Click" VerticalAlignment="Center" Margin="0,0,16,0" Padding="12,5"
                             Visibility="{Binding SwitchVisibility}" ToolTip="{Binding SwitchTip}">
