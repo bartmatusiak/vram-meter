@@ -100,21 +100,30 @@ public sealed class Overlay : IDisposable
     }
 
     // Where its display's badge goes: its saved spot, kept on the display; the top centre at first.
+    // A spot is held by the side it's nearest (left, centre, right), so as the line grows or shrinks
+    // with its figures, that side stays put: snapped to the right edge, it grows leftward.
     void Place(Badge badge, Displays.Active d)
     {
         var (w, h) = badge.Size();
         if (w == 0) return;
         int x, y;
-        if (settings.OverlaySpots.TryGetValue(d.Device, out var spot) && spot.Length == 2)
+        if (settings.OverlaySpots.TryGetValue(d.Device, out var spot) && spot.Length == 3)
         {
-            x = Math.Clamp(spot[0], 0, Math.Max(0, d.Width - w));
-            y = Math.Clamp(spot[1], 0, Math.Max(0, d.Height - h));
+            x = spot[2] switch
+            {
+                2 => d.Width - spot[0] - w,       // right: spot[0] is the gap to the right edge
+                1 => d.Width / 2 + spot[0] - w / 2,  // centre: spot[0] is the centre's offset
+                _ => spot[0],                     // left
+            };
+            y = spot[1];
         }
         else
         {
             x = (d.Width - w) / 2;
             y = Margin;
         }
+        x = Math.Clamp(x, 0, Math.Max(0, d.Width - w));
+        y = Math.Clamp(y, 0, Math.Max(0, d.Height - h));
         badge.MoveTo(d.X + x, d.Y + y);
     }
 
@@ -132,7 +141,14 @@ public sealed class Overlay : IDisposable
 
         int x = exact ? Math.Clamp(left - d.X, 0, Math.Max(0, d.Width - w)) : SnapTo(left - d.X, w, d.Width);
         int y = exact ? Math.Clamp(top - d.Y, 0, Math.Max(0, d.Height - h)) : SnapTo(top - d.Y, h, d.Height);
-        settings.OverlaySpots[d.Device] = new[] { x, y };
+        // Held by the side it's nearest, by its centre's third of the display.
+        int third = (x + w / 2) * 3 / Math.Max(1, d.Width);
+        settings.OverlaySpots[d.Device] = third switch
+        {
+            >= 2 => new[] { d.Width - x - w, y, 2 },
+            1 => new[] { x + w / 2 - d.Width / 2, y, 1 },
+            _ => new[] { x, y, 0 },
+        };
         settings.Save();
         badge.MoveTo(d.X + x, d.Y + y);
     }
@@ -161,26 +177,26 @@ public sealed class Overlay : IDisposable
 
     sealed class Badge : Window
     {
-        readonly Run name = new() { FontSize = 14 };
-        readonly Run detail = new() { FontSize = 12 };
+        const double LabelSize = 14, ValueSize = 16, Gap = 14;
+        readonly Run name = new() { FontSize = ValueSize };
+        readonly Run detail = new() { FontSize = LabelSize };
         readonly Run fps = new(), generated = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
-        readonly Border mark = new() { Width = 3, Margin = new Thickness(0, 0, 9, 0) };
 
-        // A row of fixed-width cells, each a dim label and its value, so changing figures don't
-        // change the badge's size.
-        static Grid Cells(params (string Label, Run Value, double Width)[] cells)
+        // A row of figures, each a dim label and its value, one even gap apart. Digits are all one
+        // width (tabular), so a figure changes width only when it gains or loses a digit.
+        static StackPanel Cells(params (string Label, Run Value)[] cells)
         {
-            var g = new Grid { Margin = new Thickness(0, 2, 0, 0) };
+            var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             for (int i = 0; i < cells.Length; i++)
             {
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(cells[i].Width) });
-                var t = new TextBlock { FontSize = 13 };
-                t.Inlines.Add(new Run(cells[i].Label + " ") { Foreground = Format.Res("Dim"), FontSize = 12 });
+                var t = new TextBlock { FontSize = ValueSize, Margin = new Thickness(i == 0 ? 0 : Gap, 0, 0, 0) };
+                Typography.SetNumeralAlignment(t, FontNumeralAlignment.Tabular);
+                t.Inlines.Add(new Run(cells[i].Label + " ") { Foreground = Format.Res("Dim"), FontSize = LabelSize });
+                cells[i].Value.FontSize = ValueSize;
                 t.Inlines.Add(cells[i].Value);
-                Grid.SetColumn(t, i);
-                g.Children.Add(t);
+                row.Children.Add(t);
             }
-            return g;
+            return row;
         }
 
         public string Device { get; }
@@ -202,25 +218,25 @@ public sealed class Overlay : IDisposable
             Cursor = Cursors.SizeAll;
             ToolTip = "Drag to move: it snaps to edges and corners, or hold Shift to place it exactly. Alt+O shows and hides it.";
             detail.Foreground = Format.Res("Dim");
-            var first = new TextBlock();
+            var first = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
             first.Inlines.Add(name);
             first.Inlines.Add(detail);
-            var row = new DockPanel();
-            DockPanel.SetDock(mark, Dock.Left);
-            row.Children.Add(mark);
-            // One line: the figures in fixed cells, a divider, then the GPU and display.
-            var figures = Cells(("FPS", fps, 64), ("FG", generated, 60), ("GPU", gpuUse, 70), ("CPU", cpu, 66), ("GAME", game, 96), ("VRAM", vram, 128));
-            figures.Margin = new Thickness(0, 1, 0, 0);
-            var divider = new TextBlock { Text = "|", Foreground = Format.Res("Edge"), FontSize = 14, Margin = new Thickness(4, 0, 14, 0) };
-            figures.VerticalAlignment = divider.VerticalAlignment = first.VerticalAlignment = VerticalAlignment.Center;
-            row.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Children = { figures, divider, first } });
+            // One line: the figures, a divider, then the GPU and display.
+            var figures = Cells(("FPS", fps), ("FG", generated), ("GPU", gpuUse), ("CPU", cpu), ("GAME", game), ("VRAM", vram));
+            Typography.SetNumeralAlignment(first, FontNumeralAlignment.Tabular);
+            var divider = new TextBlock
+            {
+                Text = "|", Foreground = Format.Res("Dim"), FontSize = ValueSize, Margin = new Thickness(Gap * 0.7, 0, Gap * 0.7, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            // Just the text, with a soft shadow so it reads over anything. The background is all but
+            // clear (not quite: fully clear pixels don't take the mouse, and it's dragged by them).
             Content = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(0xC8, 0x0B, 0x0C, 0x0B)),
-                BorderBrush = Format.Res("Edge"),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(8, 5, 12, 5),
-                Child = row,
+                Background = new SolidColorBrush(Color.FromArgb(0x01, 0, 0, 0)),
+                Padding = new Thickness(4, 2, 4, 2),
+                Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { figures, divider, first } },
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 6, ShadowDepth = 0, Opacity = 0.95 },
             };
             SourceInitialized += (_, _) =>
             {
@@ -250,13 +266,6 @@ public sealed class Overlay : IDisposable
             cpu.Text = cpuText;
             game.Text = gameText;
             vram.Text = vramText;
-            mark.Background = Format.Res(vendor switch
-            {
-                GpuVendor.Nvidia => "NvidiaGreen",
-                GpuVendor.Amd => "AmdBrand",
-                GpuVendor.Intel => "IntelBrand",
-                _ => "Line",
-            });
         }
 
         // In physical pixels, so it lands right whatever each display's scaling.
