@@ -21,6 +21,14 @@ public abstract class Observable : INotifyPropertyChanged
     protected void Raise(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
+// true when bound to something (a link, say): for enabling a control only when there's one.
+public sealed class HasValue : System.Windows.Data.IValueConverter
+{
+    public static readonly HasValue Instance = new();
+    public object Convert(object? value, System.Type t, object? p, System.Globalization.CultureInfo c) => value is string s ? s.Length > 0 : value != null;
+    public object ConvertBack(object? value, System.Type t, object? p, System.Globalization.CultureInfo c) => throw new System.NotSupportedException();
+}
+
 static class Format
 {
     const double GB = 1024.0 * 1024 * 1024;
@@ -57,8 +65,12 @@ public sealed class MeterVm : Observable
 
     // The GPU's vitals as tiles (label over value), and a line per monitor plugged into it.
     // Each kind of tile is a fixed width, so a figure changing length doesn't shift the rest.
-    public sealed record Tile(string Label, string Value)
+    // Note: a small line under the value (the driver's LATEST or UPDATE), a link when Url is set.
+    public sealed record Tile(string Label, string Value, string? Note = null, bool Warn = false, string? Url = null)
     {
+        public Visibility NoteVisibility => Note == null ? Visibility.Collapsed : Visibility.Visible;
+        public Brush NoteBrush => Format.Res(Warn ? "Warn" : "Dim");
+
         public double Width => Label switch
         {
             "USE" => 70,
@@ -85,7 +97,7 @@ public sealed class MeterVm : Observable
     public Visibility SwitchVisibility => showing == false ? Visibility.Visible : Visibility.Collapsed;
     public string? SwitchTip { get => switchTip; set => Set(ref switchTip, value); }
 
-    public void UpdateVitals(Gpu gpu, Reading r)
+    public void UpdateVitals(Gpu gpu, Reading r, Settings settings)
     {
         var v = r.Vitals.GetValueOrDefault(gpu.Luid) ?? new GpuVitals();
         var t = new List<Tile> { new("USE", $"{r.Use.GetValueOrDefault(gpu.Luid):0}%") };
@@ -97,7 +109,15 @@ public sealed class MeterVm : Observable
         if (v.FanPct is uint fan) t.Add(new("FAN", $"{fan}%" + (v.FanRpm is uint rpm && rpm > 0 ? $" · {rpm} RPM" : "")));
         else if (v.FanRpm is uint rpm2) t.Add(new("FAN", $"{rpm2} RPM"));
         if (v.Pcie != null) t.Add(new("LINK", v.Pcie));
-        if (v.Driver != null) t.Add(new("DRIVER", v.Driver));
+        if (v.Driver != null)
+        {
+            // NVIDIA's own numbering (617.42), and whether NVIDIA has a newer one.
+            var mine = gpu.Vendor == GpuVendor.Nvidia ? DriverCheck.NvidiaVersion(v.Driver) ?? v.Driver : v.Driver;
+            var latest = DriverCheck.Latest(gpu, settings);
+            t.Add(latest == null ? new("DRIVER", mine)
+                : DriverCheck.IsNewer(latest.Version, mine) ? new("DRIVER", mine, $"UPDATE {latest.Version} ›", Warn: true, Url: latest.Url)
+                : new("DRIVER", mine, "LATEST"));
+        }
         if (!Tiles.SequenceEqual(t)) Tiles = t;
 
         var m = r.Monitors.Where(x => x.Luid == gpu.Luid).Select(x =>

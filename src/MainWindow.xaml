@@ -1,6 +1,7 @@
 <Window x:Class="VramMeter.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:VramMeter"
         Title="VRAM Meter" Width="1180" Height="860" MinWidth="820" MinHeight="520"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Bg}" UseLayoutRounding="True" SnapsToDevicePixels="True"
@@ -93,6 +94,10 @@
                     <StackPanel Margin="0,0,0,8" Width="{Binding Width}">
                       <TextBlock Text="{Binding Label}" FontSize="11" Foreground="{StaticResource Dim}"/>
                       <TextBlock Text="{Binding Value}" FontSize="19"/>
+                      <Button Style="{StaticResource TextButton}" Click="TileNote_Click" HorizontalAlignment="Left" Visibility="{Binding NoteVisibility}"
+                              IsHitTestVisible="{Binding Url, Converter={x:Static local:HasValue.Instance}}" ToolTip="{Binding Url}">
+                        <TextBlock Text="{Binding Note}" FontSize="11" Foreground="{Binding NoteBrush}"/>
+                      </Button>
                     </StackPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

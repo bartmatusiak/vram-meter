@@ -23,6 +23,8 @@ public sealed class Tray : IDisposable
     public event Action? Exit;
     public event Action? SwitchDisplays;
     public event Action? ToggleOverlay;
+    public event Action? ToggleDriverCheck;
+    public Func<bool>? DriverCheckOn;
 
     // Whether the overlay is on, for its check mark (set by App).
     public Func<bool>? OverlayShown;
@@ -46,6 +48,9 @@ public sealed class Tray : IDisposable
         menu.Items.Add(displays);
         menu.Items.Add(overlay);
         menu.Items.Add(startup);
+        var drivers = new Forms.ToolStripMenuItem("Check NVIDIA for driver updates", null, (_, _) => ToggleDriverCheck?.Invoke());
+        menu.Items.Add(drivers);
+        menu.Opening += (_, _) => drivers.Checked = DriverCheckOn?.Invoke() ?? false;
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Exit?.Invoke());
         menu.Opening += (_, _) =>

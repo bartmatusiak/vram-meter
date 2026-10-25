@@ -67,7 +67,10 @@ the workaround: apps start on the GPU whose display is main, and stay there when
 
 ## Safety
 
-- No network and no server: nothing outside the app can ask it to do anything.
+- No server: nothing outside the app can ask it to do anything. Its one use of the internet: once a
+  day it asks NVIDIA's driver lookup (the one NVIDIA's download page uses) for the latest driver for
+  an NVIDIA card, sending only the card's model and Windows' version, to show LATEST or UPDATE under
+  DRIVER. Off in the tray menu.
 - Runs as you, never as administrator, so it can only end what you could end in Task Manager.
 - Won't end Windows' own processes, services, anything Windows marks critical, or itself.
 - Ends a process only after checking, through the same handle it ends it with, that it is the same

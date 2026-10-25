@@ -83,6 +83,8 @@ public sealed class Overlay : IDisposable
                 ? frontApp
                 : r.Snapshot.Apps.Where(a => a.Dedicated.GetValueOrDefault(d.Luid) > 0 && Sorter.Classify(a).Kind == AppKind.Game)
                     .OrderByDescending(a => a.Dedicated[d.Luid]).FirstOrDefault();
+            var vitals = r.Vitals.GetValueOrDefault(d.Luid);
+            double tempMax = vitals?.TempMaxC ?? 90;
             long used = r.Snapshot.Used.GetValueOrDefault(d.Luid);
             long total = Math.Max(gpu?.Total ?? used, used);
             badge.Set(
@@ -93,6 +95,9 @@ public sealed class Overlay : IDisposable
                 fpsOn == d.Device && front is var (_, rate, _, _) ? $"{rate:0}" : "—",
                 fpsOn == d.Device && front is var (_, _, gen, _) && gen is double share ? (share > 0 ? $"{share * 100:0}%" : "OFF") : "—",
                 $"{busy.GetValueOrDefault(d.Luid):0}%",
+                vitals?.TempC is double c ? $"{c:0}°C" : null,
+                // Green while cool, amber past 80% of the card's limit, red past 92% (88 °C limit: 70 and 81).
+                vitals?.TempC is double t ? (t >= tempMax * 0.92 ? 2 : t >= tempMax * 0.8 ? 1 : 0) : 0,
                 $"{r.Cpu:0}%",
                 game != null ? $"{game.Dedicated[d.Luid] / GB:0.0} GB" : "—",
                 $"{100.0 * used / Math.Max(1, total):0}%",
@@ -196,6 +201,13 @@ public sealed class Overlay : IDisposable
         readonly Run name = new() { FontSize = ValueSize };
         readonly Run detail = new() { FontSize = ValueSize };
         readonly TextBlock fps = new(), generated = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
+        // The GPU's temperature after its use, in a slot of its own, colored by how near its limit it is;
+        // the gap after it is the one the next figure would have had.
+        readonly TextBlock gpuTemp = new()
+        {
+            FontSize = ValueSize, Margin = new Thickness(6, 0, Gap, 0), VerticalAlignment = VerticalAlignment.Bottom, TextAlignment = TextAlignment.Right,
+        };
+
         // The card's size after VRAM's share: fixed for a display, so it needs no slot of its own.
         readonly TextBlock vramOf = new() { FontSize = ValueSize, Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Bottom };
         readonly StackPanel frames, gameCell;
@@ -250,6 +262,8 @@ public sealed class Overlay : IDisposable
             Cursor = Cursors.SizeAll;
             ToolTip = "Drag to move: it snaps to edges and corners, or hold Shift to place it exactly. Alt+O shows and hides it.";
             detail.Foreground = Format.Res("Dim");
+            gpuTemp.Width = Math.Ceiling(Measure("88°C", ValueSize)) + 2;
+            Typography.SetNumeralAlignment(gpuTemp, FontNumeralAlignment.Tabular);
             var display = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
             display.Inlines.Add(detail);
             Typography.SetNumeralAlignment(display, FontNumeralAlignment.Tabular);
@@ -273,7 +287,7 @@ public sealed class Overlay : IDisposable
                 Children =
                 {
                     frames, framesDivider,
-                    Cells(("GPU", gpuUse, new[] { "100%" }), ("CPU", cpu, new[] { "100%" })), Divider(),
+                    Cells(("GPU", gpuUse, new[] { "100%" })), gpuTemp, Cells(("CPU", cpu, new[] { "100%" })), Divider(),
                     gameCell, Cells(("VRAM", vram, new[] { "100%" })), vramOf, Divider(),
                     display, Divider(), gpuName,
                 },
@@ -305,7 +319,7 @@ public sealed class Overlay : IDisposable
             };
         }
 
-        public void Set(string gpu, string rest, GpuVendor vendor, bool inGame, string fpsText, string generatedText, string gpuText, string cpuText, string gameText, string vramText, string vramOfText)
+        public void Set(string gpu, string rest, GpuVendor vendor, bool inGame, string fpsText, string generatedText, string gpuText, string? tempText, int tempLevel, string cpuText, string gameText, string vramText, string vramOfText)
         {
             var shown = inGame ? Visibility.Visible : Visibility.Collapsed;
             frames.Visibility = framesDivider.Visibility = gameCell.Visibility = shown;
@@ -314,6 +328,8 @@ public sealed class Overlay : IDisposable
             fps.Text = fpsText;
             generated.Text = generatedText;
             gpuUse.Text = gpuText;
+            gpuTemp.Text = tempText ?? "";
+            gpuTemp.Foreground = Format.Res(tempLevel switch { 2 => "Hot", 1 => "Warn", _ => "Focus" });
             cpu.Text = cpuText;
             game.Text = gameText;
             vram.Text = vramText;

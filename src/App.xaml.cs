@@ -57,6 +57,13 @@ public partial class App : Application
         window.OverlayOn = overlay.Shown;
         tray.OverlayShown = () => overlay.Shown;
         tray.ToggleOverlay += ToggleOverlay;
+        tray.DriverCheckOn = () => window.Settings.DriverCheck;
+        tray.ToggleDriverCheck += () =>
+        {
+            window.Settings.DriverCheck = !window.Settings.DriverCheck;
+            if (!window.Settings.DriverCheck) window.Settings.LatestDriver = null;
+            window.Settings.Save();
+        };
 
         // Alt+O anywhere, games included, shows or hides the overlay.
         var hwnd = new WindowInteropHelper(window).EnsureHandle();

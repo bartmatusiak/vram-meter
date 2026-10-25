@@ -11,6 +11,7 @@
     <SolidColorBrush x:Key="Line" Color="#D9DCD5"/>
     <SolidColorBrush x:Key="Focus" Color="#8FBF4F"/>
     <SolidColorBrush x:Key="Warn" Color="#E0A43A"/>
+    <SolidColorBrush x:Key="Hot" Color="#E8564A"/>
     <SolidColorBrush x:Key="Rule" Color="#14FFFFFF"/>
     <SolidColorBrush x:Key="Edge" Color="#33FFFFFF"/>
     <SolidColorBrush x:Key="NvidiaGreen" Color="#76B900"/>

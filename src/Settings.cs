@@ -21,6 +21,11 @@ public sealed class Settings
     // The monitor's input code for each cable (DP, HDMI), learned over DDC/CI (see MonitorInput).
     public Dictionary<string, uint> InputCodes { get; set; } = new();
 
+    // Checking NVIDIA for a newer driver once a day (see DriverCheck), and what it found.
+    public bool DriverCheck { get; set; } = true;
+    public DateTime DriverCheckedAt { get; set; }
+    public LatestDriver? LatestDriver { get; set; }
+
     // The badge on each display (see Overlay).
     public bool Overlay { get; set; } = true;
 

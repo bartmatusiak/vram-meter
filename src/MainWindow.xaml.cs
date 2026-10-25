@@ -151,6 +151,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    // A tile's link (the driver's UPDATE): NVIDIA's page for it, in the browser.
+    void TileNote_Click(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is MeterVm.Tile { Url: string url } && url.StartsWith("https://"))
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+    }
+
     void SwitchHere_Click(object sender, RoutedEventArgs e)
     {
         if (((FrameworkElement)sender).DataContext is MeterVm m && Pair is var (low, high))
@@ -289,7 +296,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             foreach (var m in Meters)
             {
                 var gpu = s.Gpus.FirstOrDefault(g => g.Luid == m.Luid);
-                if (gpu != null) m.UpdateVitals(gpu, r);
+                if (gpu != null) m.UpdateVitals(gpu, r, settings);
             }
             Read?.Invoke(r);
         }
