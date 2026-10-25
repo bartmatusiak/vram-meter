@@ -58,12 +58,12 @@ public sealed class MeterVm : Observable
     {
         long other = System.Math.Max(0, used - focus);
         Name = gpu.Name.ToUpperInvariant();
-        // The maker's mark: NVIDIA's eye is square; AMD's and Intel's wordmarks are wide, so shorter.
+        // The maker's mark, every one the same height.
         (string? key, string? brush, double height) mark = gpu.Vendor switch
         {
-            GpuVendor.Nvidia => ("NvidiaMark", "NvidiaGreen", 40),
-            GpuVendor.Amd => ("AmdMark", "AmdBrand", 22),
-            GpuVendor.Intel => ("IntelMark", "IntelBrand", 30),
+            GpuVendor.Nvidia => ("NvidiaMark", "NvidiaGreen", 34),
+            GpuVendor.Amd => ("AmdMark", "AmdBrand", 34),
+            GpuVendor.Intel => ("IntelMark", "IntelBrand", 34),
             _ => (null, null, 0),
         };
         Logo = mark.key == null ? null : (Geometry)Application.Current.Resources[mark.key];

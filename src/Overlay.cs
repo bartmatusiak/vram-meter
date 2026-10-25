@@ -1,4 +1,4 @@
-// The overlay: a small badge in the top-left corner of each display saying which GPU and cable it
+// The overlay: a small badge at the top centre of each display saying which GPU and cable it
 // is (so with one monitor on two inputs you can tell which you're looking at), its resolution and
 // refresh rate, and how busy its GPU and the CPU are. Click-through, never takes focus.
 using System;
@@ -65,7 +65,7 @@ public sealed class Overlay : IDisposable
                 gpu?.Vendor ?? GpuVendor.Other,
                 $"{d.Width}×{d.Height}  @ {Math.Round(d.Hz)} HZ",
                 $"GPU {busy.GetValueOrDefault(d.Luid):0}%   CPU {load.Cpu:0}%");
-            badge.PlaceTopLeft(d.X, d.Y);
+            badge.PlaceTopCenter(d.X, d.Y, d.Width);
         }
     }
 
@@ -131,14 +131,19 @@ public sealed class Overlay : IDisposable
         }
 
         // In physical pixels, so it lands right whatever each display's scaling.
-        public void PlaceTopLeft(int x, int y)
+        public void PlaceTopCenter(int x, int y, int width)
         {
             var h = new WindowInteropHelper(this).Handle;
-            if (h != IntPtr.Zero) SetWindowPos(h, new IntPtr(-1), x + 24, y + 24, 0, 0, 0x0001 | 0x0010 | 0x0040);
+            if (h == IntPtr.Zero || !GetWindowRect(h, out var r)) return;
+            SetWindowPos(h, new IntPtr(-1), x + (width - (r.Right - r.Left)) / 2, y + 16, 0, 0, 0x0001 | 0x0010 | 0x0040);
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct RECT { public int Left, Top, Right, Bottom; }
 
         [DllImport("user32.dll")] static extern IntPtr GetWindowLongPtr(IntPtr h, int index);
         [DllImport("user32.dll")] static extern IntPtr SetWindowLongPtr(IntPtr h, int index, IntPtr value);
+        [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
         [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     }
 }
