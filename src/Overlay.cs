@@ -293,14 +293,13 @@ public sealed class Overlay : IDisposable
                     display, Divider(), gpuName,
                 },
             };
-            // Just the text, with a soft shadow so it reads over anything. The background is all but
+            // Just the text, no shadow. The background is all but
             // clear (not quite: fully clear pixels don't take the mouse, and it's dragged by them).
             Content = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(0x01, 0, 0, 0)),
                 Padding = new Thickness(4, 2, 4, 2),
                 Child = line,
-                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 6, ShadowDepth = 0, Opacity = 0.95 },
             };
             SourceInitialized += (_, _) =>
             {
