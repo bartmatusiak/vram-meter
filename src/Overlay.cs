@@ -87,7 +87,7 @@ public sealed class Overlay : IDisposable
             long total = Math.Max(gpu?.Total ?? used, used);
             badge.Set(
                 (gpu?.ShortName ?? "GPU").ToUpperInvariant(),
-                $"  ·  {d.Cable}  ·  {d.Width}×{d.Height} @ {Math.Round(d.Hz)} HZ",
+                $"{d.Cable}  ·  {Resolution(d.Width, d.Height)} @ {Math.Round(d.Hz)} HZ",
                 gpu?.Vendor ?? GpuVendor.Other,
                 fpsOn == d.Device && front is var (_, rate, _, _) ? $"{rate:0}" : "—",
                 fpsOn == d.Device && front is var (_, _, gen, _) && gen is double share ? (share > 0 ? $"{share * 100:0}%" : "OFF") : "—",
@@ -97,6 +97,19 @@ public sealed class Overlay : IDisposable
                 $"{100.0 * used / Math.Max(1, total):0}% OF {total / GB:0.0} GB");
             if (!badge.Dragging) Place(badge, d);
         }
+    }
+
+    // A display's resolution by its common name: 1080P, 1440P, 4K, ...; UW for an ultrawide.
+    static string Resolution(int width, int height)
+    {
+        string name = height switch
+        {
+            2160 => "4K",
+            2880 => "5K",
+            4320 => "8K",
+            _ => $"{height}P",
+        };
+        return (double)width / height > 2.2 ? name + " UW" : name;
     }
 
     // Where its display's badge goes: its saved spot, kept on the display; the top centre at first.
@@ -179,25 +192,38 @@ public sealed class Overlay : IDisposable
     {
         const double LabelSize = 16, ValueSize = 18, Gap = 16;
         readonly Run name = new() { FontSize = ValueSize };
-        readonly Run detail = new() { FontSize = LabelSize };
-        readonly Run fps = new(), generated = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
+        readonly Run detail = new() { FontSize = ValueSize };
+        readonly TextBlock fps = new(), generated = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
 
         // A row of figures, each a dim label and its value, one even gap apart. Digits are all one
-        // width (tabular), so a figure changes width only when it gains or loses a digit.
-        static StackPanel Cells(params (string Label, Run Value)[] cells)
+        // width (tabular). Each value sits right-aligned in a slot as wide as its widest possible value,
+        // so nothing in the line, nor the line itself, ever moves as figures change.
+        static StackPanel Cells(params (string Label, TextBlock Value, string[] Widest)[] cells)
         {
             var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             for (int i = 0; i < cells.Length; i++)
             {
-                var t = new TextBlock { FontSize = ValueSize, Margin = new Thickness(i == 0 ? 0 : Gap, 0, 0, 0) };
-                Typography.SetNumeralAlignment(t, FontNumeralAlignment.Tabular);
-                t.Inlines.Add(new Run(cells[i].Label + " ") { Foreground = Format.Res("Dim"), FontSize = LabelSize });
-                cells[i].Value.FontSize = ValueSize;
-                t.Inlines.Add(cells[i].Value);
-                row.Children.Add(t);
+                var label = new TextBlock
+                {
+                    Text = cells[i].Label, FontSize = LabelSize, Foreground = Format.Res("Dim"),
+                    Margin = new Thickness(i == 0 ? 0 : Gap, 0, 5, 0), VerticalAlignment = VerticalAlignment.Bottom,
+                };
+                var value = cells[i].Value;
+                value.FontSize = ValueSize;
+                value.TextAlignment = TextAlignment.Right;
+                value.VerticalAlignment = VerticalAlignment.Bottom;
+                value.Width = Math.Ceiling(cells[i].Widest.Max(w => Measure(w, ValueSize))) + 2;
+                Typography.SetNumeralAlignment(value, FontNumeralAlignment.Tabular);
+                row.Children.Add(label);
+                row.Children.Add(value);
             }
             return row;
         }
+
+        static double Measure(string text, double size) =>
+            new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface((FontFamily)Application.Current.Resources["Hud"], FontStyles.Normal, FontWeights.Normal, FontStretches.Normal),
+                size, Brushes.White, 1.0).WidthIncludingTrailingWhitespace;
 
         public string Device { get; }
         public bool Dragging { get; private set; }
@@ -218,16 +244,28 @@ public sealed class Overlay : IDisposable
             Cursor = Cursors.SizeAll;
             ToolTip = "Drag to move: it snaps to edges and corners, or hold Shift to place it exactly. Alt+O shows and hides it.";
             detail.Foreground = Format.Res("Dim");
-            var first = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
-            first.Inlines.Add(name);
-            first.Inlines.Add(detail);
-            // One line: the figures, a divider, then the GPU and display.
-            var figures = Cells(("FPS", fps), ("FG", generated), ("GPU", gpuUse), ("CPU", cpu), ("GAME", game), ("VRAM", vram));
-            Typography.SetNumeralAlignment(first, FontNumeralAlignment.Tabular);
-            var divider = new TextBlock
+            var display = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+            display.Inlines.Add(detail);
+            Typography.SetNumeralAlignment(display, FontNumeralAlignment.Tabular);
+            var gpuName = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+            gpuName.Inlines.Add(name);
+            // One line, in groups: FPS FG | GPU CPU | GAME VRAM | the display | the GPU.
+            // Measured with 8s: in this face the digits are all one width, and 8 is as wide as any.
+            TextBlock Divider() => new()
             {
-                Text = "|", Foreground = Format.Res("Dim"), FontSize = ValueSize, Margin = new Thickness(Gap * 0.7, 0, Gap * 0.7, 0),
+                Text = "|", Foreground = Format.Res("Dim"), FontSize = ValueSize, Margin = new Thickness(Gap * 0.8, 0, Gap * 0.8, 0),
                 VerticalAlignment = VerticalAlignment.Center,
+            };
+            var line = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Children =
+                {
+                    Cells(("FPS", fps, new[] { "888" }), ("FG", generated, new[] { "OFF", "88%" })), Divider(),
+                    Cells(("GPU", gpuUse, new[] { "100%" }), ("CPU", cpu, new[] { "100%" })), Divider(),
+                    Cells(("GAME", game, new[] { "88.8 GB" }), ("VRAM", vram, new[] { "100% OF 88.8 GB" })), Divider(),
+                    display, Divider(), gpuName,
+                },
             };
             // Just the text, with a soft shadow so it reads over anything. The background is all but
             // clear (not quite: fully clear pixels don't take the mouse, and it's dragged by them).
@@ -235,7 +273,7 @@ public sealed class Overlay : IDisposable
             {
                 Background = new SolidColorBrush(Color.FromArgb(0x01, 0, 0, 0)),
                 Padding = new Thickness(4, 2, 4, 2),
-                Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { figures, divider, first } },
+                Child = line,
                 Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 6, ShadowDepth = 0, Opacity = 0.95 },
             };
             SourceInitialized += (_, _) =>
