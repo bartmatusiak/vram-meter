@@ -49,7 +49,7 @@ public partial class App : Application
         tray.Exit += ExitApp;
         tray.SwitchDisplays += window.SwitchDisplays;
         tray.DisplaysLabel = () => window.SwitchDisplaysLabel;
-        overlay = new Overlay();
+        overlay = new Overlay(window.Settings);
         if (window.Settings.Overlay) overlay.Show();
         tray.OverlayShown = () => overlay.Shown;
         tray.ToggleOverlay += () =>

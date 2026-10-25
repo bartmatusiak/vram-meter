@@ -21,6 +21,9 @@ public sealed class Settings
     // The badge on each display (see Overlay).
     public bool Overlay { get; set; } = true;
 
+    // Where you've dragged each display's badge: x, y from the display's top-left, in pixels.
+    public Dictionary<string, int[]> OverlaySpots { get; set; } = new();
+
     // Sort each new app between the GPUs as it shows up.
     public bool AutoSort { get; set; }
 
