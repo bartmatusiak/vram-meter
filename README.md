@@ -39,8 +39,13 @@ Run it from anywhere, or install it properly with `install.ps1` (below).
   that GPU), and optionally start Windows on the built-in GPU's display, so the apps that start with
   Windows land there, then show only the card's display once they're up (not saved, so every boot
   starts the same way). See the Windows issue below for why.
-- **Overlay**: a badge in the corner of each display: its GPU and cable (with one monitor on two
-  inputs, which one you're looking at), resolution, refresh rate, and GPU and CPU use. Click-through.
+- **Overlay**: a badge on each display: its GPU and cable (with one monitor on two inputs, which one
+  you're looking at), resolution and refresh rate; then the game's FPS and memory, the GPU's memory,
+  and GPU and CPU use. The game is the app in front if it's using that GPU, else the biggest game on
+  it. Drag it anywhere and it snaps to edges and corners, or hold Shift to place it exactly; each
+  display keeps its spot. **Alt+O** shows and hides it from anywhere. FPS comes from Windows' event
+  tracing, which needs your account in the Performance Log Users group (Game Bar's FPS "Request
+  access" adds it), then a sign-out and in.
 - **End**: closes every process of an app, after you confirm.
 - **Tray**: the icon is a small live meter; hover for the figures, click for the window, right-click
   for the display switch, the overlay, Start with Windows and Exit.

@@ -5,8 +5,10 @@
 //                                     starting on the power saving one (uninstall runs this)
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
+using System.Windows.Interop;
 
 namespace VramMeter;
 
@@ -54,14 +56,17 @@ public partial class App : Application
         if (window.Settings.Overlay) overlay.Show();
         window.OverlayOn = overlay.Shown;
         tray.OverlayShown = () => overlay.Shown;
-        tray.ToggleOverlay += () =>
+        tray.ToggleOverlay += ToggleOverlay;
+
+        // Alt+O anywhere, games included, shows or hides the overlay.
+        var hwnd = new WindowInteropHelper(window).EnsureHandle();
+        HwndSource.FromHwnd(hwnd).AddHook((IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled) =>
         {
-            if (overlay.Shown) overlay.Hide();
-            else overlay.Show();
-            window.OverlayOn = overlay.Shown;
-            window.Settings.Overlay = overlay.Shown;
-            window.Settings.Save();
-        };
+            if (msg == 0x0312 && w.ToInt32() == OverlayHotkey) { ToggleOverlay(); handled = true; }
+            return IntPtr.Zero;
+        });
+        if (!RegisterHotKey(hwnd, OverlayHotkey, 0x1 | 0x4000 /* Alt, no repeat */, 0x4F /* O */))
+            tray.Notify("Alt+O is taken by another app, so it can't show and hide the overlay. Use the tray menu.");
         window.TrayReading += tray.Update;
         window.AutoSorted += tray.Notify;
         window.IsVisibleChanged += (_, _) =>
@@ -84,6 +89,20 @@ public partial class App : Application
             }));
         }
     }
+
+    const int OverlayHotkey = 1;
+
+    void ToggleOverlay()
+    {
+        if (overlay == null || window == null) return;
+        if (overlay.Shown) overlay.Hide();
+        else overlay.Show();
+        window.OverlayOn = overlay.Shown;
+        window.Settings.Overlay = overlay.Shown;
+        window.Settings.Save();
+    }
+
+    [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
 
     static void DisplaysNormal()
     {

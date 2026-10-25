@@ -41,7 +41,7 @@ public sealed class Tray : IDisposable
             startup!.Checked = Settings.StartsWithWindows;
         }) { Checked = Settings.StartsWithWindows };
         var displays = new Forms.ToolStripMenuItem("", null, (_, _) => SwitchDisplays?.Invoke());
-        var overlay = new Forms.ToolStripMenuItem("Overlay on each display", null, (_, _) => ToggleOverlay?.Invoke());
+        var overlay = new Forms.ToolStripMenuItem("Overlay on each display (Alt+O)", null, (_, _) => ToggleOverlay?.Invoke());
         menu.Items.Add(open);
         menu.Items.Add(displays);
         menu.Items.Add(overlay);
