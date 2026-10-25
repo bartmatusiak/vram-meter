@@ -116,8 +116,21 @@ public sealed class Fps : IDisposable
             // Stale: the app stopped presenting (minimised, paused on a loading screen that doesn't draw).
             if (best <= 0 || !Fresh(pid)) return null;
             double? generated = null;
-            if (rendered.TryGetValue(pid, out var own) && Rate(own) is double real and > 0)
-                generated = Math.Clamp(1 - real / best, 0, 1) is var g && g < 0.05 ? 0 : g;  // within 5%: none
+            if (rendered.TryGetValue(pid, out var own) && own.Count > 1)
+            {
+                // Presented against rendered over the very same second: ending where both have frames.
+                var chain = presents.Where(kv => kv.Key.Pid == pid).OrderByDescending(kv => Rate(kv.Value)).First().Value;
+                double end = Math.Min(chain.Last(), own.Last());
+                int shown = chain.Count(t => t > end - Window && t <= end), made = own.Count(t => t > end - Window && t <= end);
+                if (made > 0 && shown > 0)
+                {
+                    // Frame generation makes a whole number of frames per rendered one (2×, 3×, 4×):
+                    // snap to it, so a frame rate on the move can't read as a few percent generated.
+                    double ratio = (double)shown / made;
+                    double n = Math.Round(ratio);
+                    generated = n >= 1 && Math.Abs(ratio - n) < 0.25 ? 1 - 1 / n : Math.Clamp(1 - 1 / ratio, 0, 1);
+                }
+            }
             return (best, generated);
         }
     }
