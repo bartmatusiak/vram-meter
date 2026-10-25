@@ -99,6 +99,8 @@ public sealed class AppRowVm : Observable
     public bool IsFocus { get => isFocus; set => Set(ref isFocus, value); }
     public string Choice { get => choice; set => Set(ref choice, value); }
     public string NowOn { get => nowOn; set => Set(ref nowOn, value); }
+    Brush nowOnBrush = Format.Res("Dim");
+    public Brush NowOnBrush { get => nowOnBrush; set => Set(ref nowOnBrush, value); }
     public bool CanMove { get => canMove; set => Set(ref canMove, value); }
     public string? MoveTip { get => moveTip; set => Set(ref moveTip, value); }
     public bool CanEnd { get => canEnd; set => Set(ref canEnd, value); }
@@ -122,6 +124,17 @@ public sealed class AppRowVm : Observable
         var on = app.Dedicated.Where(d => d.Value > 0).OrderByDescending(d => d.Value).ToList();
         NowOn = on.Count == 0 ? ""
             : "ON " + Short(on[0].Key) + string.Concat(on.Skip(1).Select(d => $"  +{d.Value / (1024.0 * 1024 * 1024):0.00} GB {Short(d.Key)}"));
+
+        // Set to one GPU but running on the other: it started before the setting, or before that
+        // GPU was ready (apps opened at sign-in can beat a built-in GPU's driver).
+        var wanted = pref switch
+        {
+            GpuChoice.PowerSaving => s.Gpus.FirstOrDefault(g => g.PowerSaving),
+            GpuChoice.HighPerformance => s.Gpus.FirstOrDefault(g => g.HighPerformance),
+            _ => null,
+        };
+        bool astray = wanted != null && on.Count > 0 && on[0].Key != wanted.Luid;
+        NowOnBrush = Format.Res(astray ? "Warn" : "Dim");
         Choice = pref switch
         {
             GpuChoice.PowerSaving => "POWER SAVING",
@@ -134,6 +147,8 @@ public sealed class AppRowVm : Observable
         CanMove = app.ProtectedWhy == null && app.Path != null;
         MoveTip = app.ProtectedWhy != null ? app.ProtectedWhy
             : app.Path == null ? "Windows won't say where this app is installed, so its GPU can't be set."
+            : astray ? $"Set to the {wanted!.ShortName}, but it started on the {Short(on[0].Key)}: before the setting, or before " +
+                       $"the {wanted.ShortName} was ready (apps opened at sign-in can beat it). Close and reopen it to move it."
             : "Choose the GPU it runs on";
     }
 }

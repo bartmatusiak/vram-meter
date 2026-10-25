@@ -29,7 +29,9 @@ Start menu and the desktop, starts it with Windows in the tray, and lists it in 
 - **GPU**: Let Windows decide, Power saving or High performance. This is Windows' own per-app
   setting (Settings > System > Display > Graphics), so it lasts, and an app takes it up the next time
   it starts: restart the PC to switch everything cleanly. Power saving is a second GPU only when one
-  is on (a CPU's graphics, enabled in the BIOS).
+  is on (a CPU's graphics, enabled in the BIOS). Where an app runs turns amber when it's set to one
+  GPU but running on the other: it started before the setting, or, opened at sign-in, before a
+  built-in GPU's driver was ready; closing and reopening it moves it.
 - **Which GPU runs what**: a column per GPU with every app that can move in the one it will run on:
   games on the high performance GPU, everything else on the power saving one, capture and overlay
   tools (OBS, NVIDIA's overlay, Discord clips) with the games. Click an app to move it across; Apply
