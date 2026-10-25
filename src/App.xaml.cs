@@ -81,7 +81,7 @@ public partial class App : Application
         // Signed in on the power saving GPU's display: switch to the fast one once startup apps are up.
         if (window.Settings.SignInOnPowerSaving && Environment.TickCount64 < 10 * 60 * 1000)
         {
-            SignInSwitch.Start(message => Dispatcher.BeginInvoke(() =>
+            SignInSwitch.Start(window.Settings, message => Dispatcher.BeginInvoke(() =>
             {
                 if (message == null) return;
                 window.DisplaysChanged();

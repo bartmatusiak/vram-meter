@@ -15,9 +15,9 @@ public static class SignInSwitch
 
     // Runs off the UI thread; done(what happened) is called once it's over, with null when there was
     // nothing to do.
-    public static void Start(Action<string?> done) => new Thread(() => done(Run())) { IsBackground = true, Name = "Sign-in switch" }.Start();
+    public static void Start(Settings settings, Action<string?> done) => new Thread(() => done(Run(settings))) { IsBackground = true, Name = "Sign-in switch" }.Start();
 
-    static string? Run()
+    static string? Run(Settings settings)
     {
         var started = Stopwatch.StartNew();
         var monitor = new GpuMonitor();
@@ -45,6 +45,9 @@ public static class SignInSwitch
         try
         {
             Displays.FastOnly(low, high);
+            // And the monitor to that display's input.
+            Thread.Sleep(1500);
+            if (Displays.Monitors().FirstOrDefault(m => m.Luid == high.Luid)?.Cable is string cable) MonitorInput.SwitchTo(settings, cable);
             return $"Showing only the {high.ShortName}'s display now. Apps that started at sign-in stay on the {low.ShortName}; what opens next gets the {high.ShortName}.";
         }
         catch (InvalidOperationException e) { return "Couldn't switch displays: " + e.Message; }

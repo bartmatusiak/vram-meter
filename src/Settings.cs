@@ -18,6 +18,9 @@ public sealed class Settings
     // on that GPU; VRAM Meter then shows only the fast GPU's display (not saved). See Displays.
     public bool SignInOnPowerSaving { get; set; }
 
+    // The monitor's input code for each cable (DP, HDMI), learned over DDC/CI (see MonitorInput).
+    public Dictionary<string, uint> InputCodes { get; set; } = new();
+
     // The badge on each display (see Overlay).
     public bool Overlay { get; set; } = true;
 

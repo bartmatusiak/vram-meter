@@ -19,6 +19,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 {
     readonly GpuMonitor monitor = new();
     readonly Load load = new();
+    int readings;
     readonly DispatcherTimer timer = new();
     readonly DispatcherTimer statusTimer = new() { Interval = TimeSpan.FromSeconds(10) };
     readonly Settings settings = Settings.Load();
@@ -146,16 +147,31 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             if (layout == DisplayLayout.FastOnly)
             {
                 Displays.PowerSavingMain(low, high, save: false);
-                Say($"The {low.ShortName}'s display is main: apps opened now start on the {low.ShortName}. Switch your monitor to its input.");
+                FollowWithInput(low);
+                Say($"The {low.ShortName}'s display is main: apps opened now start on the {low.ShortName}.");
             }
             else
             {
                 Displays.FastOnly(low, high);
+                FollowWithInput(high);
                 Say($"Showing only the {high.ShortName}'s display: apps and games opened now start on the {high.ShortName}.");
             }
         }
         catch (InvalidOperationException ex) { Say(ex.Message, warn: true); }
         DisplaysChanged();
+    }
+
+    // Switches the monitor to the input the GPU's cable is in, once Windows has settled the new layout.
+    void FollowWithInput(Gpu gpu)
+    {
+        var cable = Displays.Monitors().FirstOrDefault(m => m.Luid == gpu.Luid)?.Cable;
+        if (cable == null) return;
+        Task.Run(() =>
+        {
+            System.Threading.Thread.Sleep(1500);
+            if (!MonitorInput.SwitchTo(settings, cable))
+                Dispatcher.BeginInvoke(() => Say("Switch your monitor to its " + cable + " input: it doesn't take commands (turn on DDC/CI in its menu).", warn: true));
+        });
     }
 
     void SignIn_Click(object sender, RoutedEventArgs e)
@@ -178,6 +194,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 Displays.FastOnly(low, high);
             }
             else Displays.FastOnly(low, high, save: true);
+            FollowWithInput(high);
             settings.SignInOnPowerSaving = on;
             settings.Save();
             Say(on ? $"From the next sign-in, Windows starts on the {low.ShortName}'s display and switches to the {high.ShortName}'s once your apps are up."
@@ -238,7 +255,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 var snap = monitor.Read();
                 var use = load.Gpus();
                 var vitals = snap.Gpus.ToDictionary(g => g.Luid, GpuStats.Read);
-                return new Reading(snap, use, load.Cpu, vitals, Displays.Monitors(), Displays.ActiveDisplays());
+                var monitors = Displays.Monitors();
+                // Every 10 s or so, learn which input each cable is (DDC/CI is slow).
+                if (readings++ % 10 == 0) MonitorInput.Learn(settings, monitors);
+                return new Reading(snap, use, load.Cpu, vitals, monitors, Displays.ActiveDisplays());
             });
             var s = r.Snapshot;
             Last = s;
