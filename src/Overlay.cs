@@ -293,13 +293,27 @@ public sealed class Overlay : IDisposable
                     display, Divider(), gpuName,
                 },
             };
-            // Just the text, no shadow. The background is all but
-            // clear (not quite: fully clear pixels don't take the mouse, and it's dragged by them).
+            // A shadow to read it on anything, drawn as its own layer: the text's shape in black, blurred,
+            // under the text itself, which has no effect on it (an effect turns what it's on into a
+            // bitmap, and that blurred the letters). The background is all but clear (not quite: fully
+            // clear pixels don't take the mouse, and it's dragged by them).
+            var shape = new VisualBrush(line) { Stretch = Stretch.Fill, ViewboxUnits = BrushMappingMode.Absolute };
+            line.SizeChanged += (_, e) => shape.Viewbox = new Rect(e.NewSize);
+            var shadow = new System.Windows.Shapes.Rectangle
+            {
+                Fill = Brushes.Black,
+                OpacityMask = shape,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 6, ShadowDepth = 0, Opacity = 1 },
+                IsHitTestVisible = false,
+            };
+            TextOptions.SetTextFormattingMode(line, TextFormattingMode.Display);
             Content = new Border
             {
                 Background = new SolidColorBrush(Color.FromArgb(0x01, 0, 0, 0)),
                 Padding = new Thickness(4, 2, 4, 2),
-                Child = line,
+                UseLayoutRounding = true,
+                SnapsToDevicePixels = true,
+                Child = new Grid { Children = { shadow, line } },
             };
             SourceInitialized += (_, _) =>
             {
