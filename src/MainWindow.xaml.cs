@@ -114,12 +114,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     bool displaysAvailable;
     public Visibility DisplaysVisibility => displaysAvailable ? Visibility.Visible : Visibility.Collapsed;
     public string DisplayButton => Pair is var (low, high)
-        ? layout == DisplayLayout.FastOnly ? $"{low.ShortName.ToUpperInvariant()} DISPLAY MAIN" : $"ONLY {high.ShortName.ToUpperInvariant()} DISPLAY"
+        ? layout == DisplayLayout.FastOnly ? $"ONLY {low.ShortName.ToUpperInvariant()} DISPLAY" : $"ONLY {high.ShortName.ToUpperInvariant()} DISPLAY"
         : "";
     public string? DisplayTip => Pair is var (l, h)
         ? layout == DisplayLayout.FastOnly
-            ? $"Turn the {l.ShortName}'s display back on as the main display: apps opened then start on the {l.ShortName}."
-            : $"Show only the {h.ShortName}'s display: apps and games opened then start on the {h.ShortName}. Apps already running stay where they are."
+            ? $"Show only the {l.ShortName}'s display, and switch the monitor to it: apps opened then start on the {l.ShortName}. Apps already running stay where they are."
+            : $"Show only the {h.ShortName}'s display, and switch the monitor to it: apps and games opened then start on the {h.ShortName}. Apps already running stay where they are."
         : null;
     public string SignInText => $"SIGN-IN ON {(Pair is var (lo, _) ? lo.ShortName.ToUpperInvariant() : "OTHER")} DISPLAY: {(settings.SignInOnPowerSaving ? "ON" : "OFF")}";
     public string? SignInTip => Pair is var (l2, h2)
@@ -146,9 +146,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             if (layout == DisplayLayout.FastOnly)
             {
-                Displays.PowerSavingMain(low, high, save: false);
+                Displays.PowerSavingOnly(low, high);
                 FollowWithInput(low);
-                Say($"The {low.ShortName}'s display is main: apps opened now start on the {low.ShortName}.");
+                Say($"Showing only the {low.ShortName}'s display: apps opened now start on the {low.ShortName}.");
             }
             else
             {
@@ -190,7 +190,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             if (on)
             {
                 // Saved: the next boot starts here. Then back to the fast display for now, not saved.
-                Displays.PowerSavingMain(low, high, save: true);
+                Displays.PowerSavingOnly(low, high, save: true);
                 Displays.FastOnly(low, high);
             }
             else Displays.FastOnly(low, high, save: true);

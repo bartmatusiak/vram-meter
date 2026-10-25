@@ -1,10 +1,12 @@
 // Which display is main, through Windows' display configuration API (SetDisplayConfig).
 //
 // Windows starts an app on the GPU its main display is plugged into, and (on some builds) ignores the
-// per-app GPU setting for apps opened normally. With a monitor cabled to both GPUs, the saved layout
-// puts the power saving GPU's display first, so the apps that start at sign-in land on it; once they
-// have, VRAM Meter shows only the fast GPU's display, without saving that, so everything opened after
-// (games) gets the fast GPU and the next boot starts on the power saving display again.
+// per-app GPU setting for apps opened normally. With a monitor cabled to both GPUs, the saved layout is
+// the power saving GPU's display alone, so the apps that start at sign-in land on it; once they have,
+// VRAM Meter shows only the fast GPU's display, without saving that, so everything opened after
+// (games) gets the fast GPU and the next boot starts on the power saving display again. Only ever one
+// display at a time: one monitor shows one input, and a second display would be an invisible screen
+// windows get lost on.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +14,7 @@ using System.Runtime.InteropServices;
 
 namespace VramMeter;
 
-public enum DisplayLayout { Unknown, FastOnly, PowerSavingMain, FastMain }
+public enum DisplayLayout { Unknown, FastOnly, PowerSavingOnly, PowerSavingMain, FastMain }
 
 public static class Displays
 {
@@ -30,22 +32,18 @@ public static class Displays
     public static DisplayLayout Saved(Gpu low, Gpu high) => Describe(Paths(QdcDatabaseCurrent, out var modes), modes, low, high);
 
     // Only the fast GPU's displays, not saved: games opened from now on get the fast GPU.
-    public static void FastOnly(Gpu low, Gpu high, bool save = false)
-    {
-        EnsureExtended();
-        var paths = Paths(QdcOnlyActivePaths, out var modes);
-        var keep = paths.Where(p => p.SourceLuid != low.Luid).ToList();
-        if (keep.Count == 0) throw new InvalidOperationException("No display is plugged into the " + high.ShortName + ".");
-        Apply(keep, modes, save);
-    }
+    public static void FastOnly(Gpu low, Gpu high, bool save = false) => Only(high, save);
 
-    // Every display on, the power saving GPU's first (main): saved, so each boot starts this way.
-    public static void PowerSavingMain(Gpu low, Gpu high, bool save = true)
+    // Only the power saving GPU's displays: apps opened from now on get the power saving GPU.
+    public static void PowerSavingOnly(Gpu low, Gpu high, bool save = false) => Only(low, save);
+
+    static void Only(Gpu gpu, bool save)
     {
         EnsureExtended();
         var paths = Paths(QdcOnlyActivePaths, out var modes);
-        if (!paths.Any(p => p.SourceLuid == low.Luid)) throw new InvalidOperationException("No display is plugged into the " + low.ShortName + ".");
-        Apply(paths.OrderBy(p => p.SourceLuid == low.Luid ? 0 : 1).ToList(), modes, save);
+        var keep = paths.Where(p => p.SourceLuid == gpu.Luid).ToList();
+        if (keep.Count == 0) throw new InvalidOperationException("No display is plugged into the " + gpu.ShortName + ".");
+        Apply(keep, modes, save);
     }
 
     // Back to the layout Windows has saved for these monitors.
@@ -195,6 +193,7 @@ public static class Displays
     {
         if (paths.Count == 0) return DisplayLayout.Unknown;
         if (paths.All(p => p.SourceLuid != low.Luid)) return DisplayLayout.FastOnly;
+        if (paths.All(p => p.SourceLuid == low.Luid)) return DisplayLayout.PowerSavingOnly;
         var main = paths.FirstOrDefault(p => p.Raw.sourceModeInfoIdx < modes.Length
             && modes[p.Raw.sourceModeInfoIdx].positionX == 0 && modes[p.Raw.sourceModeInfoIdx].positionY == 0);
         if (main == null) return DisplayLayout.Unknown;

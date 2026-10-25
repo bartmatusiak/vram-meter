@@ -19,6 +19,23 @@ public static class SignInSwitch
 
     static string? Run(Settings settings)
     {
+        // Windows may bring back both displays (it keeps a saved layout per kind of layout): one monitor
+        // shows one input, so the other would be an invisible screen apps open on. Straight away, the
+        // power saving GPU's display alone, and the monitor on it.
+        var first = Dxgi.Gpus();
+        var lo = first.FirstOrDefault(g => g.PowerSaving);
+        var hi = first.FirstOrDefault(g => g.HighPerformance);
+        if (lo != null && hi != null && Displays.Available(lo, hi) && Displays.Current(lo, hi) == DisplayLayout.PowerSavingMain)
+        {
+            try
+            {
+                Displays.PowerSavingOnly(lo, hi);
+                Thread.Sleep(1500);
+                if (Displays.Monitors().FirstOrDefault(m => m.Luid == lo.Luid)?.Cable is string loCable) MonitorInput.SwitchTo(settings, loCable);
+            }
+            catch (InvalidOperationException) { }
+        }
+
         var started = Stopwatch.StartNew();
         var monitor = new GpuMonitor();
         var seen = new HashSet<int>();
@@ -41,7 +58,7 @@ public static class SignInSwitch
         var high = gpus.FirstOrDefault(g => g.HighPerformance);
         if (low == null || high == null || !Displays.Available(low, high))
             return "Couldn't switch displays: both GPUs need a display plugged in.";
-        if (Displays.Current(low, high) != DisplayLayout.PowerSavingMain) return null;  // already switched, or set by hand
+        if (Displays.Current(low, high) is not (DisplayLayout.PowerSavingOnly or DisplayLayout.PowerSavingMain)) return null;  // already switched, or set by hand
         try
         {
             Displays.FastOnly(low, high);
