@@ -13,6 +13,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace VramMeter;
@@ -75,6 +76,13 @@ public sealed class Overlay : IDisposable
             {
                 badges[d.Device] = badge = new Badge(d.Device);
                 badge.Dropped += Dropped;
+                // Back to its spot the moment its size changes (a game's figures coming or going), not a
+                // reading later, so it doesn't draw grown from the wrong side and then jump.
+                badge.Resized += b =>
+                {
+                    var on = displays.FirstOrDefault(s => s.Device == b.Device);
+                    if (on != null && !b.Dragging) Place(b, on);
+                };
                 badge.Show();
             }
             var gpu = gpus.FirstOrDefault(g => g.Luid == d.Luid);
@@ -323,6 +331,7 @@ public sealed class Overlay : IDisposable
                 var h = new WindowInteropHelper(this).Handle;
                 SetWindowLongPtr(h, -20, (IntPtr)((long)GetWindowLongPtr(h, -20) | 0x80 | 0x08000000));
             };
+            SizeChanged += (_, _) => Resized?.Invoke(this);
             MouseLeftButtonDown += (_, e) =>
             {
                 Dragging = true;
@@ -335,10 +344,33 @@ public sealed class Overlay : IDisposable
             };
         }
 
+        public event Action<Badge>? Resized;
+        bool? inGameShown;
+        bool inGameWanted, fading;
+
+        // A game's figures coming or going: fade out, change, fade back in (placed again while unseen).
+        void ShowGame(bool inGame)
+        {
+            inGameWanted = inGame;
+            void Apply() => frames.Visibility = framesDivider.Visibility = gameCell.Visibility =
+                (inGameShown = inGameWanted) == true ? Visibility.Visible : Visibility.Collapsed;
+            if (inGameShown == null) { Apply(); return; }
+            if (inGameShown == inGame || fading) return;
+            fading = true;
+            var content = (UIElement)Content;
+            var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(120));
+            fadeOut.Completed += (_, _) =>
+            {
+                Apply();
+                fading = false;
+                content.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)) { EasingFunction = new QuadraticEase() });
+            };
+            content.BeginAnimation(OpacityProperty, fadeOut);
+        }
+
         public void Set(string gpu, string rest, GpuVendor vendor, bool inGame, string fpsText, string generatedText, string gpuText, double? heat, string cpuText, string gameText, string vramText, string vramOfText)
         {
-            var shown = inGame ? Visibility.Visible : Visibility.Collapsed;
-            frames.Visibility = framesDivider.Visibility = gameCell.Visibility = shown;
+            ShowGame(inGame);
             name.Text = gpu;
             detail.Text = rest;
             fps.Text = fpsText;
