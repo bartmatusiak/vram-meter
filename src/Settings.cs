@@ -14,6 +14,13 @@ public sealed class Settings
 
     public bool TrayHintShown { get; set; }
 
+    // Windows starts on the power saving GPU's display (saved), so the apps that start at sign-in land
+    // on that GPU; VRAM Meter then shows only the fast GPU's display (not saved). See Displays.
+    public bool SignInOnPowerSaving { get; set; }
+
+    // The badge on each display (see Overlay).
+    public bool Overlay { get; set; } = true;
+
     // Sort each new app between the GPUs as it shows up.
     public bool AutoSort { get; set; }
 

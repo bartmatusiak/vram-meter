@@ -21,6 +21,14 @@ public sealed class Tray : IDisposable
 
     public event Action? Open;
     public event Action? Exit;
+    public event Action? SwitchDisplays;
+    public event Action? ToggleOverlay;
+
+    // Whether the overlay is on, for its check mark (set by App).
+    public Func<bool>? OverlayShown;
+
+    // The display switch's label for now, or null to hide it (set by App).
+    public Func<string?>? DisplaysLabel;
 
     public Tray()
     {
@@ -32,11 +40,22 @@ public sealed class Tray : IDisposable
             Settings.StartsWithWindows = !Settings.StartsWithWindows;
             startup!.Checked = Settings.StartsWithWindows;
         }) { Checked = Settings.StartsWithWindows };
+        var displays = new Forms.ToolStripMenuItem("", null, (_, _) => SwitchDisplays?.Invoke());
+        var overlay = new Forms.ToolStripMenuItem("Overlay on each display", null, (_, _) => ToggleOverlay?.Invoke());
         menu.Items.Add(open);
+        menu.Items.Add(displays);
+        menu.Items.Add(overlay);
         menu.Items.Add(startup);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Exit?.Invoke());
-        menu.Opening += (_, _) => startup.Checked = Settings.StartsWithWindows;
+        menu.Opening += (_, _) =>
+        {
+            startup.Checked = Settings.StartsWithWindows;
+            overlay.Checked = OverlayShown?.Invoke() ?? false;
+            var label = DisplaysLabel?.Invoke();
+            displays.Visible = label != null;
+            if (label != null) displays.Text = "Display: " + System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(label.ToLowerInvariant()).Replace("Rtx", "RTX");
+        };
 
         icon = new Forms.NotifyIcon { Text = "VRAM Meter", ContextMenuStrip = menu, Visible = true };
         icon.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) Open?.Invoke(); };

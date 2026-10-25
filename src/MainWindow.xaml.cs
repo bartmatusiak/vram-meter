@@ -65,6 +65,85 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     // Tells the tray, when the window is hidden, what auto-sort just moved.
     public event Action<string>? AutoSorted;
 
+    // Which GPU's display is main (see Displays): shown when a display hangs off each GPU.
+    DisplayLayout layout;
+    bool displaysAvailable;
+    public Visibility DisplaysVisibility => displaysAvailable ? Visibility.Visible : Visibility.Collapsed;
+    public string DisplayButton => Pair is var (low, high)
+        ? layout == DisplayLayout.FastOnly ? $"{low.ShortName.ToUpperInvariant()} DISPLAY MAIN" : $"ONLY {high.ShortName.ToUpperInvariant()} DISPLAY"
+        : "";
+    public string? DisplayTip => Pair is var (l, h)
+        ? layout == DisplayLayout.FastOnly
+            ? $"Turn the {l.ShortName}'s display back on as the main display: apps opened then start on the {l.ShortName}."
+            : $"Show only the {h.ShortName}'s display: apps and games opened then start on the {h.ShortName}. Apps already running stay where they are."
+        : null;
+    public string SignInText => $"SIGN-IN ON {(Pair is var (lo, _) ? lo.ShortName.ToUpperInvariant() : "OTHER")} DISPLAY: {(settings.SignInOnPowerSaving ? "ON" : "OFF")}";
+    public string? SignInTip => Pair is var (l2, h2)
+        ? $"On: Windows starts on the {l2.ShortName}'s display, so the apps that start with Windows run on the {l2.ShortName}; " +
+          $"once they're up, VRAM Meter shows only the {h2.ShortName}'s display, so games get the {h2.ShortName}. Click to turn it {(settings.SignInOnPowerSaving ? "off" : "on")}."
+        : null;
+
+    public void DisplaysChanged()
+    {
+        var pair = Pair;
+        displaysAvailable = pair is var (l, h) && Displays.Available(l, h);
+        layout = displaysAvailable && pair is var (low, high) ? Displays.Current(low, high) : DisplayLayout.Unknown;
+        foreach (var n in new[] { nameof(DisplaysVisibility), nameof(DisplayButton), nameof(DisplayTip), nameof(SignInText), nameof(SignInTip) }) Raise(n);
+    }
+
+    void Display_Click(object sender, RoutedEventArgs e) => SwitchDisplays();
+
+    public string? SwitchDisplaysLabel => displaysAvailable ? DisplayButton : null;
+
+    public void SwitchDisplays()
+    {
+        if (Pair is not var (low, high)) return;
+        try
+        {
+            if (layout == DisplayLayout.FastOnly)
+            {
+                Displays.PowerSavingMain(low, high, save: false);
+                Say($"The {low.ShortName}'s display is main: apps opened now start on the {low.ShortName}. Switch your monitor to its input.");
+            }
+            else
+            {
+                Displays.FastOnly(low, high);
+                Say($"Showing only the {high.ShortName}'s display: apps and games opened now start on the {high.ShortName}.");
+            }
+        }
+        catch (InvalidOperationException ex) { Say(ex.Message, warn: true); }
+        DisplaysChanged();
+    }
+
+    void SignIn_Click(object sender, RoutedEventArgs e)
+    {
+        if (Pair is not var (low, high)) return;
+        bool on = !settings.SignInOnPowerSaving;
+        if (on && !HudDialog.Ask(this, $"START WINDOWS ON THE {low.ShortName.ToUpperInvariant()}'S DISPLAY?",
+                $"Windows will start on the {low.ShortName}'s display, so your sign-in screen shows on that input. The apps that start with " +
+                $"Windows then run on the {low.ShortName}. Once they're up, VRAM Meter shows only the {high.ShortName}'s display, so games " +
+                $"and anything you open after get the {high.ShortName}; switch your monitor's input if it doesn't follow. Turning this off, " +
+                "or uninstalling VRAM Meter, puts Windows back to the " + high.ShortName + "'s display alone.",
+                "TURN ON"))
+            return;
+        try
+        {
+            if (on)
+            {
+                // Saved: the next boot starts here. Then back to the fast display for now, not saved.
+                Displays.PowerSavingMain(low, high, save: true);
+                Displays.FastOnly(low, high);
+            }
+            else Displays.FastOnly(low, high, save: true);
+            settings.SignInOnPowerSaving = on;
+            settings.Save();
+            Say(on ? $"From the next sign-in, Windows starts on the {low.ShortName}'s display and switches to the {high.ShortName}'s once your apps are up."
+                   : $"Windows starts on the {high.ShortName}'s display again.");
+        }
+        catch (InvalidOperationException ex) { Say(ex.Message, warn: true); }
+        DisplaysChanged();
+    }
+
     public MainWindow()
     {
         InitializeComponent();
@@ -115,6 +194,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             Last = s;
             Raise(nameof(CanSort));
             Raise(nameof(SortTip));
+            DisplaysChanged();
             AutoSort(s);
             Draw(s);
         }

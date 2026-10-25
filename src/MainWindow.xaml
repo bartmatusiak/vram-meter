@@ -79,17 +79,28 @@
       </ItemsControl>
 
       <Grid Grid.Row="1" Margin="0,8,0,12">
-        <StackPanel Margin="0,0,220,0">
+        <StackPanel Margin="0,0,500,0">
           <TextBlock Text="APPS USING VRAM" FontSize="20"/>
           <TextBlock Text="CLICK AN APP TO MEASURE IT AGAINST THE REST.  GPU PICKS THE CARD IT RUNS ON FROM ITS NEXT START.  END CLOSES IT."
                      FontSize="12" Foreground="{StaticResource Dim}" Margin="0,5,0,0" TextWrapping="Wrap"/>
         </StackPanel>
-        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+        <!-- Which GPU's display is main: apps start on that GPU -->
+        <StackPanel Margin="0,0,14,0" Visibility="{Binding DisplaysVisibility}">
+          <Button Style="{StaticResource HudButton}" Click="Display_Click" ToolTip="{Binding DisplayTip}" Padding="14,6" HorizontalAlignment="Right">
+            <TextBlock Text="{Binding DisplayButton}" FontSize="13" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+          </Button>
+          <Button Style="{StaticResource TextButton}" Click="SignIn_Click" ToolTip="{Binding SignInTip}" HorizontalAlignment="Right" Margin="0,3,0,0">
+            <TextBlock Text="{Binding SignInText}" FontSize="11" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+          </Button>
+        </StackPanel>
+        <StackPanel VerticalAlignment="Center">
           <Button Style="{StaticResource HudButton}" Click="Sort_Click" IsEnabled="{Binding CanSort}" ToolTip="{Binding SortTip}"
                   ToolTipService.ShowOnDisabled="True" Padding="14,6" HorizontalAlignment="Right">
             <TextBlock Text="WHICH GPU RUNS WHAT" FontSize="13" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
           </Button>
           <TextBlock Text="{Binding AutoSortText}" FontSize="11" Foreground="{StaticResource Dim}" HorizontalAlignment="Right" Margin="0,5,0,0"/>
+        </StackPanel>
         </StackPanel>
       </Grid>
 

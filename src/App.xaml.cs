@@ -1,6 +1,8 @@
 // VRAM Meter: which apps use the GPU's memory, ending them, and choosing the GPU each one runs on.
 //   VramMeter.exe          open the window (or bring up the one already running)
 //   VramMeter.exe --tray   start in the tray (at logon)
+//   VramMeter.exe --displays-normal   save a layout of the fast GPU's displays alone, and stop
+//                                     starting on the power saving one (uninstall runs this)
 using System;
 using System.Linq;
 using System.Threading;
@@ -18,11 +20,18 @@ public partial class App : Application
     EventWaitHandle? showEvent;
     MainWindow? window;
     Tray? tray;
+    Overlay? overlay;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         bool trayOnly = e.Args.Contains("--tray");
+        if (e.Args.Contains("--displays-normal"))
+        {
+            DisplaysNormal();
+            Shutdown();
+            return;
+        }
 
         instance = new Mutex(true, InstanceName, out bool first);
         if (!first)
@@ -38,6 +47,18 @@ public partial class App : Application
         tray = new Tray();
         tray.Open += ShowWindow;
         tray.Exit += ExitApp;
+        tray.SwitchDisplays += window.SwitchDisplays;
+        tray.DisplaysLabel = () => window.SwitchDisplaysLabel;
+        overlay = new Overlay();
+        if (window.Settings.Overlay) overlay.Show();
+        tray.OverlayShown = () => overlay.Shown;
+        tray.ToggleOverlay += () =>
+        {
+            if (overlay.Shown) overlay.Hide();
+            else overlay.Show();
+            window.Settings.Overlay = overlay.Shown;
+            window.Settings.Save();
+        };
         window.Reading += tray.Update;
         window.AutoSorted += tray.Notify;
         window.IsVisibleChanged += (_, _) =>
@@ -48,6 +69,30 @@ public partial class App : Application
             tray.Hint();
         };
         if (!trayOnly) ShowWindow();
+
+        // Signed in on the power saving GPU's display: switch to the fast one once startup apps are up.
+        if (window.Settings.SignInOnPowerSaving && Environment.TickCount64 < 10 * 60 * 1000)
+        {
+            SignInSwitch.Start(message => Dispatcher.BeginInvoke(() =>
+            {
+                if (message == null) return;
+                window.DisplaysChanged();
+                tray.Notify(message);
+            }));
+        }
+    }
+
+    static void DisplaysNormal()
+    {
+        var settings = Settings.Load();
+        settings.SignInOnPowerSaving = false;
+        settings.Save();
+        var gpus = Dxgi.Gpus();
+        var low = gpus.FirstOrDefault(g => g.PowerSaving);
+        var high = gpus.FirstOrDefault(g => g.HighPerformance);
+        if (low == null || high == null || !Displays.Available(low, high)) return;
+        try { Displays.FastOnly(low, high, save: true); }
+        catch (InvalidOperationException) { }
     }
 
     void ShowWindow()
@@ -65,6 +110,7 @@ public partial class App : Application
             window.Exiting = true;
             window.Close();
         }
+        overlay?.Dispose();
         tray?.Dispose();
         Shutdown();
     }

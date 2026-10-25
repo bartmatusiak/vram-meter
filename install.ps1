@@ -18,6 +18,8 @@ Get-Process VramMeter -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
 
 if ($Remove) {
+    # If Windows was set to start on the power saving GPU's display, put it back on the fast GPU's.
+    if (Test-Path $exe) { Start-Process $exe '--displays-normal' -Wait }
     Remove-Item $startMenu, $desktop -Force -ErrorAction SilentlyContinue
     Remove-ItemProperty $runKey $name -ErrorAction SilentlyContinue
     Remove-Item $uninstallKey -Recurse -Force -ErrorAction SilentlyContinue
