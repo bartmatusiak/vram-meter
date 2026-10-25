@@ -17,7 +17,12 @@ Run it from anywhere, or install it properly with `install.ps1` (below).
 
 - **The meter**: one bar per GPU. Green is the app you're measuring (the biggest game running, or
   the app you click), white is everything else, out of the card's total.
-- **Apps**: every app holding GPU memory, by what actually sits in the GPU's own memory (Windows'
+- **GPU stats**: under each meter, the GPU's use, temperature (and its limit), power, core and memory
+  clocks, fan, PCIe link and driver, and each monitor plugged into it: name, cable, resolution,
+  refresh rate, main or off. Temperature, power and fan come from the driver's report to Windows (any
+  vendor, as Task Manager reads it); NVIDIA cards add watts, clocks, fan and link from NVIDIA's own
+  monitoring library.
+- **Apps**: a table, sortable by any column (click a heading; again to reverse), of every app holding GPU memory, by what actually sits in the GPU's own memory (Windows'
   *Local Usage*; its *Dedicated Usage* also charges recorders, overlays and the desktop compositor
   for every screen they borrow, reaching dozens of GB on a 16 GB card). An app drawn on one GPU
   and shown on a screen plugged into the other keeps a little on that one for the frames it hands
@@ -78,7 +83,8 @@ Installed apps (uninstall there, or `install.ps1 -Remove`). Rerun it after chang
 
 - `src/`: the app (WPF on .NET 10). `Gpus.cs` reads the GPUs (DirectX) and the GPU memory counters;
   `Processes.cs` names and ends processes; `GpuPreferences.cs` sets an app's GPU; `Sorter.cs` tells
-  games from the rest; `Displays.cs` switches displays; `Overlay.cs` and `Load.cs` the overlay;
+  games from the rest; `Displays.cs` switches and lists displays; `GpuStats.cs` the GPUs' temperature, power, clocks and fan;
+  `Load.cs` GPU and CPU use; `Overlay.cs` the overlay;
   `Tray.cs` the tray icon; `MainWindow.xaml` the window.
 - `src/make-icon.ps1`: draws `VramMeter.ico`.
 - `install.ps1`: builds and installs; `-Remove` uninstalls.

@@ -18,6 +18,7 @@ namespace VramMeter;
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
     readonly GpuMonitor monitor = new();
+    readonly Load load = new();
     readonly DispatcherTimer timer = new();
     readonly DispatcherTimer statusTimer = new() { Interval = TimeSpan.FromSeconds(10) };
     readonly Settings settings = Settings.Load();
@@ -37,7 +38,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public bool Exiting { get; set; }
 
     // The main GPU's figures, for the tray: bytes for the focus app, everyone else, and the card.
-    public event Action<long, long, long, string?>? Reading;
+    public event Action<long, long, long, string?>? TrayReading;
+
+    // Every reading, for the overlay.
+    public event Action<Reading>? Read;
+
+    // The overlay wants a reading every second even with the window closed.
+    bool overlayOn;
+    public bool OverlayOn { get => overlayOn; set { overlayOn = value; Pace(); } }
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string Status { get => status; set { status = value; Raise(nameof(Status)); Raise(nameof(StatusVisibility)); } }
@@ -61,6 +69,41 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         ? "Keep games on the fast GPU and move everything else to the other one"
         : "Only one GPU is on. Turn on the CPU's graphics in the BIOS to sort apps between two.";
     public string AutoSortText => settings.AutoSort ? "NEW APPS: SORTED AUTOMATICALLY" : "NEW APPS: LEFT AS THEY ARE";
+
+    // The table's order: a column, and which way. VRAM, biggest first, to begin with.
+    enum SortColumn { App, Vram, Shared, Gpu }
+    SortColumn sortBy = SortColumn.Vram;
+    bool descending = true;
+    string Head(string label, SortColumn c) => sortBy == c ? $"{label} {(descending ? "▼" : "▲")}" : label;
+    public string HeadApp => Head("APP", SortColumn.App);
+    public string HeadVram => Head("VRAM", SortColumn.Vram);
+    public string HeadShared => Head("SHARED RAM", SortColumn.Shared);
+    public string HeadGpu => Head("GPU", SortColumn.Gpu);
+
+    void SortBy_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string tag } || !Enum.TryParse<SortColumn>(tag, out var c)) return;
+        // Again on the same column reverses it; a new column starts with the order that reads best.
+        descending = c == sortBy ? !descending : c is SortColumn.Vram or SortColumn.Shared;
+        sortBy = c;
+        foreach (var n in new[] { nameof(HeadApp), nameof(HeadVram), nameof(HeadShared), nameof(HeadGpu) }) Raise(n);
+        if (Last != null) Draw(Last);
+    }
+
+    List<AppGroup> Ordered(Snapshot s)
+    {
+        string GpuOf(AppGroup a) => a.Dedicated.Where(d => d.Value > 0).OrderByDescending(d => d.Value)
+            .Select(d => s.Gpus.FirstOrDefault(g => g.Luid == d.Key)?.ShortName ?? "").FirstOrDefault() ?? "";
+        IOrderedEnumerable<AppGroup> o = sortBy switch
+        {
+            SortColumn.App => descending ? s.Apps.OrderByDescending(a => a.Title, StringComparer.OrdinalIgnoreCase) : s.Apps.OrderBy(a => a.Title, StringComparer.OrdinalIgnoreCase),
+            SortColumn.Shared => descending ? s.Apps.OrderByDescending(a => a.Shared) : s.Apps.OrderBy(a => a.Shared),
+            SortColumn.Gpu => descending ? s.Apps.OrderByDescending(GpuOf) : s.Apps.OrderBy(GpuOf),
+            _ => descending ? s.Apps.OrderByDescending(a => a.TotalDedicated) : s.Apps.OrderBy(a => a.TotalDedicated),
+        };
+        // Ties by VRAM, so the order holds still between readings.
+        return o.ThenByDescending(a => a.TotalDedicated).ThenBy(a => a.Key, StringComparer.OrdinalIgnoreCase).ToList();
+    }
 
     // Tells the tray, when the window is hidden, what auto-sort just moved.
     public event Action<string>? AutoSorted;
@@ -159,8 +202,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     void Raise(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    // Every 1.5 s while you're looking, every 4 s for the tray icon alone.
-    void Pace() => timer.Interval = TimeSpan.FromSeconds(IsVisible ? 1.5 : 4);
+    // Every second while you're looking or the overlay is on, every 4 s for the tray icon alone.
+    void Pace() => timer.Interval = TimeSpan.FromSeconds(IsVisible || overlayOn ? 1 : 4);
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -190,13 +233,26 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         reading = true;
         try
         {
-            var s = await Task.Run(monitor.Read);
+            var r = await Task.Run(() =>
+            {
+                var snap = monitor.Read();
+                var use = load.Gpus();
+                var vitals = snap.Gpus.ToDictionary(g => g.Luid, GpuStats.Read);
+                return new Reading(snap, use, load.Cpu, vitals, Displays.Monitors(), Displays.ActiveDisplays());
+            });
+            var s = r.Snapshot;
             Last = s;
             Raise(nameof(CanSort));
             Raise(nameof(SortTip));
             DisplaysChanged();
             AutoSort(s);
             Draw(s);
+            foreach (var m in Meters)
+            {
+                var gpu = s.Gpus.FirstOrDefault(g => g.Luid == m.Luid);
+                if (gpu != null) m.UpdateVitals(gpu, r);
+            }
+            Read?.Invoke(r);
         }
         catch (Exception ex)
         {
@@ -223,12 +279,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             long focusBytes = focus == null ? 0 : Math.Min(focus.Dedicated[g.Luid], used);
             if (focus != null) focusKeys.Add(focus.Key);
             Meters.First(m => m.Luid == g.Luid).Update(g, used, Math.Max(g.Total, used), focus?.Title, focusBytes);
-            if (first) Reading?.Invoke(focusBytes, Math.Max(0, used - focusBytes), Math.Max(g.Total, used), focus?.Title);
+            if (first) TrayReading?.Invoke(focusBytes, Math.Max(0, used - focusBytes), Math.Max(g.Total, used), focus?.Title);
             first = false;
         }
 
         long max = s.Apps.Select(a => a.TotalDedicated).DefaultIfEmpty(1).Max();
-        Sync(Apps, s.Apps, a => a.Key, r => r.Key, a => new AppRowVm { Key = a.Key });
+        Sync(Apps, Ordered(s), a => a.Key, r => r.Key, a => new AppRowVm { Key = a.Key });
         foreach (var a in s.Apps)
         {
             var pref = a.Path != null ? GpuPreferences.Get(a.Path) : GpuChoice.Auto;

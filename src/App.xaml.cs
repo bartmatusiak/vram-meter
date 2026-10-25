@@ -50,16 +50,19 @@ public partial class App : Application
         tray.SwitchDisplays += window.SwitchDisplays;
         tray.DisplaysLabel = () => window.SwitchDisplaysLabel;
         overlay = new Overlay(window.Settings);
+        window.Read += overlay.Update;
         if (window.Settings.Overlay) overlay.Show();
+        window.OverlayOn = overlay.Shown;
         tray.OverlayShown = () => overlay.Shown;
         tray.ToggleOverlay += () =>
         {
             if (overlay.Shown) overlay.Hide();
             else overlay.Show();
+            window.OverlayOn = overlay.Shown;
             window.Settings.Overlay = overlay.Shown;
             window.Settings.Save();
         };
-        window.Reading += tray.Update;
+        window.TrayReading += tray.Update;
         window.AutoSorted += tray.Notify;
         window.IsVisibleChanged += (_, _) =>
         {

@@ -117,6 +117,52 @@ public static class Displays
         return list;
     }
 
+    // Every monitor plugged into a GPU, on or not: its name, the GPU and cable, and if on, its mode.
+    public sealed record Monitor(string Name, long Luid, string Cable, Active? Showing, bool Main);
+
+    public static List<Monitor> Monitors()
+    {
+        var active = ActiveDisplays();
+        var activePaths = Paths(QdcOnlyActivePaths);
+        var list = new List<Monitor>();
+        var seen = new HashSet<(long, uint)>();
+        foreach (var p in Paths(QdcAllPaths).Where(p => p.TargetAvailable))
+        {
+            var r = p.Raw;
+            long luid = ((long)r.targetAdapterHigh << 32) | r.targetAdapterLow;
+            if (!seen.Add((luid, r.targetId))) continue;
+            var target = new TargetName { type = 2, size = Marshal.SizeOf<TargetName>(), adapterLow = r.targetAdapterLow, adapterHigh = r.targetAdapterHigh, id = r.targetId };
+            string name = DisplayConfigGetDeviceInfo(ref target) == 0 && !string.IsNullOrWhiteSpace(target.friendlyName) ? target.friendlyName : "MONITOR";
+            // Showing when an active path drives this target: its source is the display Windows uses.
+            var on = activePaths.FirstOrDefault(a => a.Raw.targetId == r.targetId && a.Raw.targetAdapterLow == r.targetAdapterLow && a.Raw.targetAdapterHigh == r.targetAdapterHigh);
+            Active? showing = null;
+            if (on != null)
+            {
+                var src = new SourceName { type = 1, size = Marshal.SizeOf<SourceName>(), adapterLow = on.Raw.sourceAdapterLow, adapterHigh = on.Raw.sourceAdapterHigh, id = on.Raw.sourceId };
+                if (DisplayConfigGetDeviceInfo(ref src) == 0) showing = active.FirstOrDefault(a => a.Device == src.gdiName);
+            }
+            list.Add(new Monitor(name, luid, Cable(r.outputTechnology), showing, showing is { X: 0, Y: 0 }));
+        }
+        return list;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct TargetName
+    {
+        public int type, size;
+        public uint adapterLow;
+        public int adapterHigh;
+        public uint id, flags;
+        public int outputTechnology;
+        public ushort edidManufactureId, edidProductCodeId;
+        public uint connectorInstance;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)] public string friendlyName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string devicePath;
+    }
+
+    [DllImport("user32.dll")]
+    static extern int DisplayConfigGetDeviceInfo(ref TargetName info);
+
     static string Cable(int tech) => tech switch
     {
         0 => "VGA",

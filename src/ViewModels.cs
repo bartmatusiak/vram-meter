@@ -53,6 +53,36 @@ public sealed class MeterVm : Observable
     public GridLength OtherWidth { get => otherWidth; set => Set(ref otherWidth, value); }
     public GridLength FreeWidth { get => freeWidth; set => Set(ref freeWidth, value); }
 
+    // The GPU's vitals as tiles (label over value), and a line per monitor plugged into it.
+    public sealed record Tile(string Label, string Value);
+
+    List<Tile> tiles = new();
+    List<string> monitors = new();
+    public List<Tile> Tiles { get => tiles; set => Set(ref tiles, value); }
+    public List<string> Monitors { get => monitors; set => Set(ref monitors, value); }
+
+    public void UpdateVitals(Gpu gpu, Reading r)
+    {
+        var v = r.Vitals.GetValueOrDefault(gpu.Luid) ?? new GpuVitals();
+        var t = new List<Tile> { new("USE", $"{r.Use.GetValueOrDefault(gpu.Luid):0}%") };
+        if (v.TempC is double c) t.Add(new("TEMP", $"{c:0}°C" + (v.TempMaxC is double max ? $" / {max:0}" : "")));
+        if (v.PowerW is double w) t.Add(new("POWER", $"{w:0} W" + (v.PowerLimitW is double lim ? $" / {lim:0}" : "")));
+        else if (v.PowerPct is double pct) t.Add(new("POWER", $"{pct:0}%"));
+        if (v.CoreMHz is uint core) t.Add(new("CORE", $"{core} MHZ"));
+        if (v.MemoryMHz is uint mem && mem > 0) t.Add(new("MEMORY", $"{mem} MHZ"));
+        if (v.FanPct is uint fan) t.Add(new("FAN", $"{fan}%" + (v.FanRpm is uint rpm && rpm > 0 ? $" · {rpm} RPM" : "")));
+        else if (v.FanRpm is uint rpm2) t.Add(new("FAN", $"{rpm2} RPM"));
+        if (v.Pcie != null) t.Add(new("LINK", v.Pcie));
+        if (v.Driver != null) t.Add(new("DRIVER", v.Driver));
+        if (!Tiles.SequenceEqual(t)) Tiles = t;
+
+        var m = r.Monitors.Where(x => x.Luid == gpu.Luid).Select(x =>
+            $"{x.Name.ToUpperInvariant()}  ·  {x.Cable}  ·  " +
+            (x.Showing is { } s ? $"{s.Width}×{s.Height} @ {System.Math.Round(s.Hz)} HZ" + (x.Main ? "  ·  MAIN" : "") : "CONNECTED, OFF")).ToList();
+        if (m.Count == 0) m.Add("NO MONITOR PLUGGED IN");
+        if (!Monitors.SequenceEqual(m)) Monitors = m;
+    }
+
     // focus and other are bytes of total; the bar's columns share it by those weights.
     public void Update(Gpu gpu, long used, long total, string? focusTitle, long focus)
     {

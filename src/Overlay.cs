@@ -22,39 +22,34 @@ public sealed class Overlay : IDisposable
 
     readonly Settings settings;
     readonly Dictionary<string, Badge> badges = new();
-    readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(1) };
-    readonly Load load = new();
-    List<Gpu> gpus = new();
     List<Displays.Active> displays = new();
-    int tick;
+    Reading? last;
 
-    public Overlay(Settings settings)
-    {
-        this.settings = settings;
-        timer.Tick += (_, _) => Update();
-    }
+    public Overlay(Settings settings) => this.settings = settings;
 
-    public bool Shown => timer.IsEnabled;
+    public bool Shown { get; private set; }
 
     public void Show()
     {
-        if (timer.IsEnabled) return;
-        timer.Start();
-        Update();
+        Shown = true;
+        if (last != null) Update(last);
     }
 
     public void Hide()
     {
-        timer.Stop();
+        Shown = false;
         foreach (var b in badges.Values) b.Close();
         badges.Clear();
     }
 
-    void Update()
+    // Each reading (once a second while the overlay is on): one badge per display showing.
+    public void Update(Reading r)
     {
-        if (gpus.Count == 0 || tick++ % 30 == 0) gpus = Dxgi.Gpus();
-        var busy = load.Gpus();
-        displays = Displays.ActiveDisplays();
+        last = r;
+        if (!Shown) return;
+        var gpus = r.Snapshot.Gpus;
+        var busy = r.Use;
+        displays = r.Active;
         foreach (var gone in badges.Keys.Except(displays.Select(d => d.Device)).ToList())
         {
             badges[gone].Close();
@@ -73,7 +68,7 @@ public sealed class Overlay : IDisposable
                 (gpu?.ShortName ?? "GPU").ToUpperInvariant(),
                 $"  ·  {d.Cable}  ·  {d.Width}×{d.Height} @ {Math.Round(d.Hz)} HZ  ·  ",
                 gpu?.Vendor ?? GpuVendor.Other,
-                $"GPU {busy.GetValueOrDefault(d.Luid):0}%   CPU {load.Cpu:0}%");
+                $"GPU {busy.GetValueOrDefault(d.Luid):0}%   CPU {r.Cpu:0}%");
             if (!badge.Dragging) Place(badge, d);
         }
     }
@@ -123,11 +118,7 @@ public sealed class Overlay : IDisposable
         return pos;
     }
 
-    public void Dispose()
-    {
-        Hide();
-        load.Dispose();
-    }
+    public void Dispose() => Hide();
 
     sealed class Badge : Window
     {

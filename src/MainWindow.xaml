@@ -73,6 +73,30 @@
                 </StackPanel>
                 <TextBlock Grid.Column="2" Text="{Binding TotalText}" FontSize="24"/>
               </Grid>
+
+              <!-- The GPU's vitals, then each monitor plugged into it -->
+              <ItemsControl ItemsSource="{Binding Tiles}" Margin="0,18,0,0" Focusable="False">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Margin="0,0,40,8">
+                      <TextBlock Text="{Binding Label}" FontSize="11" Foreground="{StaticResource Dim}"/>
+                      <TextBlock Text="{Binding Value}" FontSize="19"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding Monitors}" Margin="0,2,0,0" Focusable="False">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock FontSize="13" Foreground="{StaticResource Dim}" Margin="0,2,0,0">
+                      <Run Text="DISPLAY   " Foreground="{StaticResource Dim}" FontSize="11"/><Run Text="{Binding Mode=OneWay}" Foreground="{StaticResource Fg}"/>
+                    </TextBlock>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
             </StackPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
@@ -114,16 +138,25 @@
           <ColumnDefinition Width="240"/>
           <ColumnDefinition Width="76"/>
         </Grid.ColumnDefinitions>
+        <!-- Click a heading to sort by it, again to reverse -->
         <Grid.Resources>
-          <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="FontSize" Value="12"/>
+          <Style x:Key="Head" TargetType="Button" BasedOn="{StaticResource TextButton}">
             <Setter Property="Foreground" Value="{StaticResource Dim}"/>
+            <Setter Property="ToolTip" Value="Sort by this column; click again to reverse"/>
           </Style>
         </Grid.Resources>
-        <TextBlock Text="APP"/>
-        <TextBlock Grid.Column="2" Text="VRAM" HorizontalAlignment="Right"/>
-        <TextBlock Grid.Column="3" Text="SHARED RAM" HorizontalAlignment="Right"/>
-        <TextBlock Grid.Column="4" Text="GPU" HorizontalAlignment="Right"/>
+        <Button Style="{StaticResource Head}" Click="SortBy_Click" Tag="App" HorizontalAlignment="Left">
+          <TextBlock Text="{Binding HeadApp}" FontSize="12" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        </Button>
+        <Button Grid.Column="2" Style="{StaticResource Head}" Click="SortBy_Click" Tag="Vram" HorizontalAlignment="Right">
+          <TextBlock Text="{Binding HeadVram}" FontSize="12" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        </Button>
+        <Button Grid.Column="3" Style="{StaticResource Head}" Click="SortBy_Click" Tag="Shared" HorizontalAlignment="Right">
+          <TextBlock Text="{Binding HeadShared}" FontSize="12" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        </Button>
+        <Button Grid.Column="4" Style="{StaticResource Head}" Click="SortBy_Click" Tag="Gpu" HorizontalAlignment="Right">
+          <TextBlock Text="{Binding HeadGpu}" FontSize="12" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        </Button>
       </Grid>
 
       <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Visible" Focusable="False">

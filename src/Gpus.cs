@@ -128,6 +128,10 @@ public sealed class AppGroup
 
 public sealed record Snapshot(List<Gpu> Gpus, Dictionary<long, long> Used, List<AppGroup> Apps);
 
+// One reading of everything, taken in the background and shared by the window, tray and overlay.
+public sealed record Reading(Snapshot Snapshot, Dictionary<long, double> Use, float Cpu, Dictionary<long, GpuVitals> Vitals,
+    List<Displays.Monitor> Monitors, List<Displays.Active> Active);
+
 public sealed class GpuMonitor
 {
     static readonly Regex Instance = new(@"^(?:pid_(\d+)_)?luid_0x([0-9a-f]{8})_0x([0-9a-f]{8})", RegexOptions.IgnoreCase);
