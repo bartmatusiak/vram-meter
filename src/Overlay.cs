@@ -60,7 +60,7 @@ public sealed class Overlay : IDisposable
         // The app in front's frame rate, on the display its window is on.
         var front = fps.Foreground();
         string? fpsOn = null;
-        if (front is var (_, _, hwnd) && GetWindowRect(hwnd, out var wr))
+        if (front is var (_, _, _, hwnd) && GetWindowRect(hwnd, out var wr))
         {
             int cx = (wr.Left + wr.Right) / 2, cy = (wr.Top + wr.Bottom) / 2;
             fpsOn = displays.FirstOrDefault(s => cx >= s.X && cx < s.X + s.Width && cy >= s.Y && cy < s.Y + s.Height)?.Device;
@@ -89,7 +89,8 @@ public sealed class Overlay : IDisposable
                 (gpu?.ShortName ?? "GPU").ToUpperInvariant(),
                 $"  ·  {d.Cable}  ·  {d.Width}×{d.Height} @ {Math.Round(d.Hz)} HZ",
                 gpu?.Vendor ?? GpuVendor.Other,
-                fpsOn == d.Device && front is var (_, rate, _) ? $"{rate:0}" : "—",
+                fpsOn == d.Device && front is var (_, rate, _, _) ? $"{rate:0}" : "—",
+                fpsOn == d.Device && front is var (_, _, gen, _) && gen is double share ? (share > 0 ? $"{share * 100:0}%" : "OFF") : "—",
                 $"{busy.GetValueOrDefault(d.Luid):0}%",
                 $"{r.Cpu:0}%",
                 game != null ? $"{game.Dedicated[d.Luid] / GB:0.0} GB" : "—",
@@ -162,7 +163,7 @@ public sealed class Overlay : IDisposable
     {
         readonly Run name = new() { FontSize = 14 };
         readonly Run detail = new() { FontSize = 12 };
-        readonly Run fps = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
+        readonly Run fps = new(), generated = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
         readonly Border mark = new() { Width = 3, Margin = new Thickness(0, 0, 9, 0) };
 
         // A row of fixed-width cells, each a dim label and its value, so changing figures don't
@@ -218,7 +219,7 @@ public sealed class Overlay : IDisposable
             top.Children.Add(memory);
             row.Children.Add(new StackPanel
             {
-                Children = { top, Cells(("FPS", fps, 64), ("GPU", gpuUse, 70), ("CPU", cpu, 66), ("GAME", game, 96)) },
+                Children = { top, Cells(("FPS", fps, 64), ("FG", generated, 60), ("GPU", gpuUse, 70), ("CPU", cpu, 66), ("GAME", game, 96)) },
             });
             Content = new Border
             {
@@ -246,11 +247,12 @@ public sealed class Overlay : IDisposable
             };
         }
 
-        public void Set(string gpu, string rest, GpuVendor vendor, string fpsText, string gpuText, string cpuText, string gameText, string vramText)
+        public void Set(string gpu, string rest, GpuVendor vendor, string fpsText, string generatedText, string gpuText, string cpuText, string gameText, string vramText)
         {
             name.Text = gpu;
             detail.Text = rest;
             fps.Text = fpsText;
+            generated.Text = generatedText;
             gpuUse.Text = gpuText;
             cpu.Text = cpuText;
             game.Text = gameText;

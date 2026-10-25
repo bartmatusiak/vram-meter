@@ -43,7 +43,11 @@ Run it from anywhere, or install it properly with `install.ps1` (below).
   you're looking at), resolution and refresh rate; then the game's FPS and memory, the GPU's memory,
   and GPU and CPU use. The game is the app in front if it's using that GPU, else the biggest game on
   it. Drag it anywhere and it snaps to edges and corners, or hold Shift to place it exactly; each
-  display keeps its spot. **Alt+O** shows and hides it from anywhere. FPS comes from Windows' event
+  display keeps its spot. **Alt+O** shows and hides it from anywhere. **FG** is the share of frames
+  made by frame generation (DLSS Frame Generation, or FSR's in a game with Reflex): the game's own
+  rendered frames, which NVIDIA Reflex reports through its latency markers (PCLStats), against all
+  frames presented; 50% is 2× frame generation, OFF none, — a game without Reflex. AMD's driver-level
+  AFMF adds frames outside the game's presents and can't be seen this way. FPS comes from Windows' event
   tracing, which needs your account in the Performance Log Users group (Game Bar's FPS "Request
   access" adds it), then a sign-out and in.
 - **End**: closes every process of an app, after you confirm.
