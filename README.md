@@ -18,16 +18,21 @@ Start menu, starts it with Windows in the tray, and lists it in Settings > Apps 
 
 ## Using it
 
-- **The meter**: one bar per GPU. Green is the app you're measuring (the biggest, until you click
-  another), white is everything else, from the card's own total.
+- **The meter**: one bar per GPU. Green is the app you're measuring (the biggest game running, or
+  the app you click, until the window closes or you click it again), white is everything else, from
+  the card's own total.
 - **Apps**: every app holding GPU memory. *Overcounted* marks an app reporting more than its card has
   in use: overlays, recorders and Windows' compositor are charged for the screens they borrow.
 - **GPU**: Let Windows decide, Power saving or High performance. This is Windows' own per-app
   setting (Settings > System > Display > Graphics), so it lasts, and an app takes it up the next time
   it starts. Power saving is a second GPU only when one is on (a CPU's graphics, enabled in the BIOS).
-- **Sort apps between GPUs**: keeps games on the high performance GPU and moves everything else to the
-  power saving one, after showing the plan with each move ticked. Capture and overlay tools (OBS,
-  NVIDIA's overlay, Discord clips) stay with the games. A game is an .exe Windows' Game Bar has
+- **GPU** offers to restart the app so it switches now: the app that runs it (Steam for its web
+  helper) is closed as its X would, ended if it hides in the tray instead, and opened again as it
+  was (a Store app through Windows).
+- **Which GPU runs what**: a column per GPU with every app that can move in the one it will run on:
+  games on the high performance GPU, everything else on the power saving one, capture and overlay
+  tools (OBS, NVIDIA's overlay, Discord clips) with the games. Click an app to move it across; Apply
+  sets them and, if ticked, restarts the moved apps (never games). A game is an .exe Windows' Game Bar has
   detected as one, or one in a game library (Steam, EA, Epic, GOG, Ubisoft, Riot, Xbox). Its option
   to keep sorting sorts each new app as it first uses a GPU; apps you've set yourself are left alone.
   On a built-in GPU the meter counts the system RAM it borrows, since that is its memory.

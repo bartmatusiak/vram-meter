@@ -12,8 +12,6 @@ public sealed class Settings
     static readonly string File = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VRAM Meter", "settings.json");
 
-    // The app measured against the rest (its .exe path).
-    public string? Focus { get; set; }
     public bool TrayHintShown { get; set; }
 
     // Sort each new app between the GPUs as it shows up.

@@ -14,8 +14,6 @@ namespace VramMeter;
 
 public enum AppKind { Game, Capture, Other }
 
-public sealed record SortStep(AppGroup App, AppKind Kind, string Why, GpuChoice From, GpuChoice To);
-
 public static class Sorter
 {
     static readonly string[] GameFolders =
@@ -51,19 +49,19 @@ public static class Sorter
 
     public static GpuChoice Target(AppKind kind) => kind == AppKind.Other ? GpuChoice.PowerSaving : GpuChoice.HighPerformance;
 
-    // What sorting would change for these apps: the ones that can move and aren't there already.
-    public static List<SortStep> Plan(IEnumerable<AppGroup> apps)
+    // Where each app that can move goes: where you put it, if you have; otherwise where it belongs.
+    public static List<Assignment> Assign(IEnumerable<AppGroup> apps, ISet<string> decided)
     {
-        var steps = new List<SortStep>();
+        var items = new List<Assignment>();
         foreach (var app in apps)
         {
             if (app.Path == null || app.ProtectedWhy != null) continue;
-            var (kind, why) = Classify(app);
+            var kind = Classify(app).Kind;
             var from = GpuPreferences.Get(app.Path);
-            var to = Target(kind);
-            if (from != to) steps.Add(new SortStep(app, kind, why, from, to));
+            var to = decided.Contains(app.Path) && from != GpuChoice.Auto ? from : Target(kind);
+            items.Add(new Assignment { App = app, Kind = kind, From = from, To = to });
         }
-        return steps.OrderBy(s => s.Kind).ThenBy(s => s.App.Title).ToList();
+        return items;
     }
 
     static HashSet<string> DetectedGames()

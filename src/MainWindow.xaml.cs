@@ -23,6 +23,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     readonly Settings settings = Settings.Load();
     bool reading;
 
+    // The app you clicked to measure, until the window closes or you click it again; otherwise the
+    // biggest game running, and failing that the biggest app.
+    string? focusKey;
+
     public Settings Settings => settings;
     string status = "", note = "";
     Brush statusBrush = Format.Res("Focus");
@@ -95,6 +99,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (!Exiting)
         {
             e.Cancel = true;
+            focusKey = null;
             Hide();
         }
         base.OnClosing(e);
@@ -136,7 +141,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             long used = s.Used.GetValueOrDefault(g.Luid);
             var candidates = s.Apps.Where(a => a.Dedicated.GetValueOrDefault(g.Luid) > 0 && !Over(a)).ToList();
-            var focus = candidates.FirstOrDefault(a => a.Key == settings.Focus)
+            var focus = candidates.FirstOrDefault(a => a.Key == focusKey)
+                        ?? candidates.Where(a => Sorter.Classify(a).Kind == AppKind.Game).OrderByDescending(a => a.Dedicated[g.Luid]).FirstOrDefault()
                         ?? candidates.OrderByDescending(a => a.Dedicated[g.Luid]).FirstOrDefault();
             long focusBytes = focus == null ? 0 : Math.Min(focus.Dedicated[g.Luid], used);
             if (focus != null) focusKeys.Add(focus.Key);
@@ -181,8 +187,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     void Row_Click(object sender, MouseButtonEventArgs e)
     {
         if (((FrameworkElement)sender).DataContext is not AppRowVm row || row.IsOver) return;
-        settings.Focus = row.Key;
-        settings.Save();
+        focusKey = focusKey == row.Key ? null : row.Key;
         if (Last != null) Draw(Last);
     }
 
@@ -258,29 +263,58 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     void Sort_Click(object sender, RoutedEventArgs e)
     {
         if (Last == null || Pair is not var (low, high)) return;
-        var plan = Sorter.Plan(Last.Apps);
-        var answer = SortDialog.Ask(this, plan, low, high, settings.AutoSort);
+        var items = Sorter.Assign(Last.Apps, settings.Decided);
+        var answer = SortDialog.Ask(this, items, low, high, settings.AutoSort);
         if (answer == null) return;
         settings.AutoSort = answer.AutoSort;
-        int moved = 0;
+        // Every app on the board is placed now: auto-sort leaves them where you put them.
+        foreach (var i in items) settings.Decided.Add(i.App.Path!);
+        var moved = new List<AppGroup>();
         var failed = new List<string>();
-        foreach (var step in answer.Chosen)
+        foreach (var i in answer.Changed)
         {
             try
             {
-                GpuPreferences.Set(step.App.Path!, step.To);
-                settings.Decided.Add(step.App.Path!);
-                moved++;
+                GpuPreferences.Set(i.App.Path!, i.To);
+                moved.Add(i.App);
             }
-            catch (Exception ex) { failed.Add($"{step.App.Title} ({ex.Message})"); }
+            catch (Exception ex) { failed.Add($"{i.App.Title} ({ex.Message})"); }
         }
-        // Unticked apps count as decided too: auto-sort won't move them behind your back.
-        foreach (var step in plan.Except(answer.Chosen)) settings.Decided.Add(step.App.Path!);
         settings.Save();
         Raise(nameof(AutoSortText));
-        if (failed.Count > 0) Say($"Moved {moved}; couldn't move {string.Join(", ", failed)}.", warn: true);
-        else if (moved > 0) Say($"Moved {moved} app{(moved == 1 ? "" : "s")}. Each switches GPU the next time it starts.");
         Draw(Last);
+        if (failed.Count > 0) Say($"Moved {moved.Count}; couldn't move {string.Join(", ", failed)}.", warn: true);
+        else if (moved.Count > 0) Say($"Moved {moved.Count} app{(moved.Count == 1 ? "" : "s")}.");
+
+        // Restart the ones that moved, games aside, so they switch now.
+        if (answer.Restart)
+        {
+            var apps = answer.Changed.Where(i => i.Kind != AppKind.Game && moved.Contains(i.App)).Select(i => i.App).ToList();
+            _ = RestartAll(apps);
+        }
+    }
+
+    // Restarts apps one at a time (an app with several moved helpers once), reporting as it goes.
+    async Task RestartAll(List<AppGroup> apps)
+    {
+        var plans = new List<RestartPlan>();
+        var skipped = new List<string>();
+        foreach (var app in apps)
+        {
+            var (plan, why) = Restarter.PlanFor(app);
+            if (plan == null) skipped.Add($"{app.Title} ({why})");
+            else if (plans.All(p => p.Pid != plan.Pid)) plans.Add(plan);
+        }
+        var problems = new List<string>(skipped);
+        foreach (var plan in plans)
+        {
+            Say($"Restarting {plan.Title}…");
+            var problem = await Task.Run(() => Restarter.Restart(plan));
+            if (problem != null) problems.Add(problem);
+        }
+        if (problems.Count > 0) Say("Restarted what it could. " + string.Join(" ", problems), warn: true);
+        else if (plans.Count > 0) Say($"Restarted {string.Join(", ", plans.Select(p => p.Title))} on their new GPU.");
+        await Refresh();
     }
 
     // New apps, as they first use a GPU: sorted like Sort would, unless you've set them yourself.
@@ -312,14 +346,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         try
         {
+            bool changed = GpuPreferences.Get(app.Path!) != choice;
             GpuPreferences.Set(app.Path!, choice);
             settings.Decided.Add(app.Path!);
             settings.Save();
+            if (Last != null) Draw(Last);
             string where = choice == GpuChoice.Auto ? "the GPU Windows picks" : gpuName ?? "that GPU";
-            Say($"{app.Title} will run on {where} from the next time it starts (kept in Windows' Graphics settings). End it and open it again to switch now.");
+            Say($"{app.Title} will run on {where} from its next start.");
+            if (!changed) return;
+
+            // It reads its GPU only as it starts: offer to restart it now.
+            var (plan, _) = Restarter.PlanFor(app);
+            if (plan == null) return;
+            bool game = Sorter.Classify(app).Kind == AppKind.Game;
+            string whom = plan.IsHelper ? $"{plan.Title}, which runs {app.Title}," : plan.Title;
+            if (HudDialog.Ask(this, $"RESTART {plan.Title.ToUpperInvariant()} NOW?",
+                    $"So it switches straight away, this closes {whom} and opens it again." +
+                    (game ? " It's a game: you'll leave the match or lose unsaved progress." : " Anything unsaved in it is lost."),
+                    "RESTART", danger: game))
+                _ = RestartAll(new List<AppGroup> { app });
         }
         catch (Exception ex) { Say($"Couldn't set {app.Title}'s GPU: {ex.Message}", warn: true); }
-        if (Last != null) Draw(Last);
     }
 
     void Say(string text, bool warn = false)
