@@ -1,5 +1,5 @@
 # Installs VRAM Meter for this user (no admin needed): builds VramMeter.exe, puts it in
-# %LOCALAPPDATA%\Programs\VRAM Meter (the per-user Program Files), adds it to the Start menu, starts
+# %LOCALAPPDATA%\Programs\VRAM Meter (the per-user Program Files), adds it to the Start menu and the desktop, starts
 # it at logon in the tray, and lists it in Settings > Apps > Installed apps.
 #   powershell -ExecutionPolicy Bypass -File install.ps1          (install / update)
 #   powershell -ExecutionPolicy Bypass -File install.ps1 -Remove  (uninstall)
@@ -10,6 +10,7 @@ $name = 'VRAM Meter'
 $target = Join-Path $env:LOCALAPPDATA "Programs\$name"
 $exe = Join-Path $target 'VramMeter.exe'
 $startMenu = Join-Path ([Environment]::GetFolderPath('Programs')) "$name.lnk"
+$desktop = Join-Path ([Environment]::GetFolderPath('Desktop')) "$name.lnk"
 $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\VramMeter"
 
@@ -17,7 +18,7 @@ Get-Process VramMeter -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
 
 if ($Remove) {
-    Remove-Item $startMenu -Force -ErrorAction SilentlyContinue
+    Remove-Item $startMenu, $desktop -Force -ErrorAction SilentlyContinue
     Remove-ItemProperty $runKey $name -ErrorAction SilentlyContinue
     Remove-Item $uninstallKey -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $env:LOCALAPPDATA $name) -Recurse -Force -ErrorAction SilentlyContinue
@@ -36,10 +37,12 @@ New-Item $target -ItemType Directory -Force | Out-Null
 Copy-Item (Join-Path $out 'VramMeter.exe'), (Join-Path $PSScriptRoot 'VramMeter.ico'), $PSCommandPath $target -Force
 
 $shell = New-Object -ComObject WScript.Shell
-$s = $shell.CreateShortcut($startMenu)
-$s.TargetPath = $exe; $s.WorkingDirectory = $target; $s.IconLocation = "$exe,0"
-$s.Description = 'See which apps use your GPU memory, end them, and pick the GPU they run on'
-$s.Save()
+foreach ($link in $startMenu, $desktop) {
+    $s = $shell.CreateShortcut($link)
+    $s.TargetPath = $exe; $s.WorkingDirectory = $target; $s.IconLocation = "$exe,0"
+    $s.Description = 'See which apps use your GPU memory, end them, and pick the GPU they run on'
+    $s.Save()
+}
 
 Set-ItemProperty $runKey $name "`"$exe`" --tray"
 

@@ -13,7 +13,7 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
 It builds one self-contained `VramMeter.exe` into `%LOCALAPPDATA%\Programs\VRAM Meter`, adds it to the
-Start menu, starts it with Windows in the tray, and lists it in Settings > Apps > Installed apps
+Start menu and the desktop, starts it with Windows in the tray, and lists it in Settings > Apps > Installed apps
 (uninstall there, or `install.ps1 -Remove`). Rerun it after changing the source.
 
 ## Using it
