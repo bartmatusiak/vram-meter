@@ -23,6 +23,9 @@ public partial class App : Application
     {
         base.OnStartup(e);
         bool trayOnly = e.Args.Contains("--tray");
+        // Started in the first minutes after Windows: at sign-in, or opened by hand before Windows
+        // got to its startup entry.
+        bool signIn = trayOnly || Environment.TickCount64 < 5 * 60 * 1000;
 
         instance = new Mutex(true, InstanceName, out bool first);
         if (!first)
@@ -32,7 +35,7 @@ public partial class App : Application
             return;
         }
         // Started at sign-in: log the first minutes of the GPUs (see SignInLog).
-        if (trayOnly || e.Args.Contains("--sign-in-log")) SignInLog.Start();
+        if (signIn || e.Args.Contains("--sign-in-log")) SignInLog.Start();
 
         showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
         ThreadPool.RegisterWaitForSingleObject(showEvent, (_, _) => Dispatcher.BeginInvoke(ShowWindow), null, -1, false);
