@@ -30,8 +30,10 @@ Start menu and the desktop, starts it with Windows in the tray, and lists it in 
   Display > Graphics, where the GPUs are called High performance and Power saving), so it lasts, and an app takes it up the next time
   it starts: restart the PC to switch everything cleanly. Power saving is a second GPU only when one
   is on (a CPU's graphics, enabled in the BIOS). Where an app runs turns amber when it's set to one
-  GPU but running on the other: it started before the setting, or, opened at sign-in, before a
-  built-in GPU's driver was ready; closing and reopening it moves it.
+  GPU but running on the other: Windows didn't apply the setting. Either the app started before it,
+  and reopening it moves it, or it's a Windows bug: some builds (seen on Insider build 26300) ignore
+  the setting for apps opened from Start, the taskbar or at sign-in, though Windows' own Graphics
+  settings page writes the very same entry.
 - **Which GPU runs what**: a column per GPU with every app that can move in the one it will run on:
   games on the fast card, everything else on the other GPU, capture and overlay
   tools (OBS, NVIDIA's overlay, Discord clips) with the games. Click an app to move it across; Apply

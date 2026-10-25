@@ -125,8 +125,8 @@ public sealed class AppRowVm : Observable
         NowOn = on.Count == 0 ? ""
             : "ON " + Short(on[0].Key) + string.Concat(on.Skip(1).Select(d => $"  +{d.Value / (1024.0 * 1024 * 1024):0.00} GB {Short(d.Key)}"));
 
-        // Set to one GPU but running on the other: it started before the setting, or before that
-        // GPU was ready (apps opened at sign-in can beat a built-in GPU's driver).
+        // Set to one GPU but running on the other: it started before the setting, or Windows didn't
+        // apply it (some Windows builds ignore it for apps opened from Start, the taskbar or at sign-in).
         var wanted = pref switch
         {
             GpuChoice.PowerSaving => s.Gpus.FirstOrDefault(g => g.PowerSaving),
@@ -147,8 +147,9 @@ public sealed class AppRowVm : Observable
         CanMove = app.ProtectedWhy == null && app.Path != null;
         MoveTip = app.ProtectedWhy != null ? app.ProtectedWhy
             : app.Path == null ? "Windows won't say where this app is installed, so its GPU can't be set."
-            : astray ? $"Set to the {wanted!.ShortName}, but it started on the {Short(on[0].Key)}: before the setting, or before " +
-                       $"the {wanted.ShortName} was ready (apps opened at sign-in can beat it). Close and reopen it to move it."
+            : astray ? $"Set to the {wanted!.ShortName}, but running on the {Short(on[0].Key)}: Windows didn't apply the setting. " +
+                       "Either it started before the setting, or this is a Windows bug on some builds, which ignore it for apps " +
+                       "opened from Start, the taskbar or at sign-in. Reopening it applies the setting only in the first case."
             : "Choose the GPU it runs on";
     }
 }
