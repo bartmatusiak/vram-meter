@@ -80,6 +80,7 @@ public sealed class MeterVm : Observable
             "MEMORY" => 125,
             "FAN" => 155,
             "LINK" => 135,
+            "DRIVER" => 185,  // room for UPDATE AVAILABLE under it
             _ => 145,
         };
     }
@@ -115,7 +116,7 @@ public sealed class MeterVm : Observable
             var mine = gpu.Vendor == GpuVendor.Nvidia ? DriverCheck.NvidiaVersion(v.Driver) ?? v.Driver : v.Driver;
             var latest = DriverCheck.Latest(gpu, settings);
             t.Add(latest == null ? new("DRIVER", mine)
-                : DriverCheck.IsNewer(latest.Version, mine) ? new("DRIVER", mine, $"UPDATE {latest.Version} ›", Warn: true, Url: latest.Url)
+                : DriverCheck.IsNewer(latest.Version, mine) ? new("DRIVER", mine, $"UPDATE AVAILABLE: {latest.Version} ›", Warn: true, Url: latest.Url)
                 : new("DRIVER", mine, "LATEST"));
         }
         if (!Tiles.SequenceEqual(t)) Tiles = t;
