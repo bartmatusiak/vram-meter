@@ -89,6 +89,7 @@ public sealed class Overlay : IDisposable
                 (gpu?.ShortName ?? "GPU").ToUpperInvariant(),
                 $"{d.Cable}  ·  {Resolution(d.Width, d.Height)} @ {Math.Round(d.Hz)} HZ",
                 gpu?.Vendor ?? GpuVendor.Other,
+                game != null,
                 fpsOn == d.Device && front is var (_, rate, _, _) ? $"{rate:0}" : "—",
                 fpsOn == d.Device && front is var (_, _, gen, _) && gen is double share ? (share > 0 ? $"{share * 100:0}%" : "OFF") : "—",
                 $"{busy.GetValueOrDefault(d.Luid):0}%",
@@ -194,6 +195,8 @@ public sealed class Overlay : IDisposable
         readonly Run name = new() { FontSize = ValueSize };
         readonly Run detail = new() { FontSize = ValueSize };
         readonly TextBlock fps = new(), generated = new(), gpuUse = new(), cpu = new(), game = new(), vram = new();
+        readonly StackPanel frames, gameCell;
+        readonly TextBlock framesDivider;
 
         // A row of figures, each a dim label and its value, one even gap apart. Digits are all one
         // width (tabular). Each value sits right-aligned in a slot as wide as its widest possible value,
@@ -256,14 +259,19 @@ public sealed class Overlay : IDisposable
                 Text = "|", Foreground = Format.Res("Dim"), FontSize = ValueSize, Margin = new Thickness(Gap * 0.8, 0, Gap * 0.8, 0),
                 VerticalAlignment = VerticalAlignment.Center,
             };
+            // FPS, FG and GAME only while a game is running (see Set).
+            frames = Cells(("FPS", fps, new[] { "888" }), ("FG", generated, new[] { "OFF", "88%" }));
+            framesDivider = Divider();
+            gameCell = Cells(("GAME", game, new[] { "88.8 GB" }));
+            gameCell.Margin = new Thickness(0, 0, Gap, 0);
             var line = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Children =
                 {
-                    Cells(("FPS", fps, new[] { "888" }), ("FG", generated, new[] { "OFF", "88%" })), Divider(),
+                    frames, framesDivider,
                     Cells(("GPU", gpuUse, new[] { "100%" }), ("CPU", cpu, new[] { "100%" })), Divider(),
-                    Cells(("GAME", game, new[] { "88.8 GB" }), ("VRAM", vram, new[] { "100% OF 88.8 GB" })), Divider(),
+                    gameCell, Cells(("VRAM", vram, new[] { "100% OF 88.8 GB" })), Divider(),
                     display, Divider(), gpuName,
                 },
             };
@@ -294,8 +302,10 @@ public sealed class Overlay : IDisposable
             };
         }
 
-        public void Set(string gpu, string rest, GpuVendor vendor, string fpsText, string generatedText, string gpuText, string cpuText, string gameText, string vramText)
+        public void Set(string gpu, string rest, GpuVendor vendor, bool inGame, string fpsText, string generatedText, string gpuText, string cpuText, string gameText, string vramText)
         {
+            var shown = inGame ? Visibility.Visible : Visibility.Collapsed;
+            frames.Visibility = framesDivider.Visibility = gameCell.Visibility = shown;
             name.Text = gpu;
             detail.Text = rest;
             fps.Text = fpsText;
