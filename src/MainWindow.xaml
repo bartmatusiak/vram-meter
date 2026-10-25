@@ -100,7 +100,7 @@
           <ColumnDefinition Width="160"/>
           <ColumnDefinition Width="100"/>
           <ColumnDefinition Width="110"/>
-          <ColumnDefinition Width="190"/>
+          <ColumnDefinition Width="240"/>
           <ColumnDefinition Width="76"/>
         </Grid.ColumnDefinitions>
         <Grid.Resources>
@@ -127,7 +127,7 @@
                     <ColumnDefinition Width="160"/>
                     <ColumnDefinition Width="100"/>
                     <ColumnDefinition Width="110"/>
-                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="240"/>
                     <ColumnDefinition Width="76"/>
                   </Grid.ColumnDefinitions>
                   <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0">
@@ -143,12 +143,11 @@
                         </Style.Triggers>
                       </Style>
                     </TextBlock.Style>
-                    <Run Text="{Binding Title, Mode=OneWay}" FontSize="16"/><Run Text="   "/><Run Text="{Binding Exe, Mode=OneWay}" FontFamily="{StaticResource Plain}" FontSize="11.5" Foreground="{StaticResource Dim}"/><Run Text="{Binding OverText, Mode=OneWay}" FontSize="11.5" Foreground="{StaticResource Warn}"/>
+                    <Run Text="{Binding Title, Mode=OneWay}" FontSize="16"/><Run Text="   "/><Run Text="{Binding Exe, Mode=OneWay}" FontFamily="{StaticResource Plain}" FontSize="11.5" Foreground="{StaticResource Dim}"/>
                   </TextBlock>
                   <Rectangle Grid.Column="1" Height="8" HorizontalAlignment="Left" Width="{Binding BarWidth}" Fill="{Binding BarFill}"
                              RenderOptions.EdgeMode="Aliased"/>
-                  <TextBlock Grid.Column="2" Text="{Binding Vram}" FontSize="15" HorizontalAlignment="Right" VerticalAlignment="Center"
-                             Foreground="{Binding VramBrush}"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Vram}" FontSize="15" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="3" Text="{Binding SharedRam}" FontSize="15" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                   <Button Grid.Column="4" Style="{StaticResource TextButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
                           Click="Gpu_Click" IsEnabled="{Binding CanMove}" ToolTip="{Binding MoveTip}" ToolTipService.ShowOnDisabled="True">

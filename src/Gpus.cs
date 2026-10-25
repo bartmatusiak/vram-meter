@@ -25,8 +25,8 @@ public sealed record Gpu(long Luid, string Name, long Total, uint VendorId, bool
         _ => GpuVendor.Other,
     };
 
-    // "NVIDIA GeForce RTX 5080" -> "RTX 5080"; "AMD Radeon(TM) Graphics" -> "Radeon Graphics"
-    public string ShortName => Regex.Replace(Name, @"^(NVIDIA|AMD|Intel\(R\))\s+(GeForce\s+)?|\(TM\)|\(R\)", "").Trim();
+    // "NVIDIA GeForce RTX 5080" -> "RTX 5080"; "AMD Radeon(TM) Graphics" -> "Radeon"
+    public string ShortName => Regex.Replace(Name, @"^(NVIDIA|AMD|Intel\(R\))\s+(GeForce\s+)?|\(TM\)|\(R\)|\s+Graphics$", "").Trim();
 }
 
 static unsafe class Dxgi
@@ -159,22 +159,20 @@ public sealed class GpuMonitor
             used[luid] = used.GetValueOrDefault(luid) + u;
         }
 
+        // Each app's share is its Local Usage: what sits in the GPU's own memory. Its Dedicated Usage
+        // also counts every surface it opens from another app (a recorder, an overlay, the desktop's
+        // compositor reach dozens of GB on a 16 GB card); Local Usage adds up to the card's total.
         var all = processes.ReadCategory();
-        var dedicated = all["Dedicated Usage"];
+        var local = all["Local Usage"];
         var shared = all["Shared Usage"];
         var groups = new Dictionary<string, AppGroup>(StringComparer.OrdinalIgnoreCase);
-        foreach (InstanceData d in dedicated.Values)
+        foreach (InstanceData d in local.Values)
         {
             if (!Parse(d.InstanceName, out var pid, out var luid) || pid <= 0 || !known.Contains(luid)) continue;
             long ded = d.RawValue;
-            long sh = shared.Contains(d.InstanceName) ? shared[d.InstanceName].RawValue : 0;
+            // A built-in GPU's memory is system RAM already counted in its Local Usage.
+            long sh = builtIn.Contains(luid) || !shared.Contains(d.InstanceName) ? 0 : shared[d.InstanceName].RawValue;
             if (ded <= 0 && sh <= 0) continue;
-            // On a built-in GPU the borrowed system RAM is its memory: count it there.
-            if (builtIn.Contains(luid))
-            {
-                ded += sh;
-                sh = 0;
-            }
 
             var p = Processes.Get(pid);
             if (p == null) continue;  // ended since the counters were read

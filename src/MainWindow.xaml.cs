@@ -127,10 +127,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     void Draw(Snapshot s)
     {
-        // An app reporting more than its whole card has in use counts other apps' surfaces it
-        // captures or draws over (overlays, recorders, the desktop's compositor) as its own.
-        bool Over(AppGroup a) => a.Dedicated.Any(d => d.Value > s.Used.GetValueOrDefault(d.Key));
-
         // Meters: every GPU in use, or the first when none is.
         var shown = s.Gpus.Where(g => s.Used.GetValueOrDefault(g.Luid) > 0).ToList();
         if (shown.Count == 0 && s.Gpus.Count > 0) shown.Add(s.Gpus[0]);
@@ -140,7 +136,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         foreach (var g in shown)
         {
             long used = s.Used.GetValueOrDefault(g.Luid);
-            var candidates = s.Apps.Where(a => a.Dedicated.GetValueOrDefault(g.Luid) > 0 && !Over(a)).ToList();
+            var candidates = s.Apps.Where(a => a.Dedicated.GetValueOrDefault(g.Luid) > 0).ToList();
             var focus = candidates.FirstOrDefault(a => a.Key == focusKey)
                         ?? candidates.Where(a => Sorter.Classify(a).Kind == AppKind.Game).OrderByDescending(a => a.Dedicated[g.Luid]).FirstOrDefault()
                         ?? candidates.OrderByDescending(a => a.Dedicated[g.Luid]).FirstOrDefault();
@@ -151,20 +147,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             first = false;
         }
 
-        long maxPlain = s.Apps.Where(a => !Over(a)).Select(a => a.TotalDedicated).DefaultIfEmpty(1).Max();
+        long max = s.Apps.Select(a => a.TotalDedicated).DefaultIfEmpty(1).Max();
         Sync(Apps, s.Apps, a => a.Key, r => r.Key, a => new AppRowVm { Key = a.Key });
         foreach (var a in s.Apps)
         {
             var pref = a.Path != null ? GpuPreferences.Get(a.Path) : GpuChoice.Auto;
-            Apps.First(r => r.Key == a.Key).Update(a, s, Over(a), focusKeys.Contains(a.Key), maxPlain, pref);
+            Apps.First(r => r.Key == a.Key).Update(a, s, focusKeys.Contains(a.Key), max, pref);
         }
-
-        var overs = Apps.Where(r => r.IsOver).Select(r => r.App.Title).ToList();
-        Note = overs.Count == 0 ? "" :
-            $"Overcounted: {string.Join(", ", overs)} report more than the whole card has in use, which can't be true. " +
-            "Apps that capture, record or draw over other apps' screens (and Windows' desktop compositor) are charged " +
-            "for every picture they borrow from another app as well. Their real share is lower; the bar uses the card's " +
-            "own total, so nothing is counted twice.";
     }
 
     // Brings a list in line with the reading without rebuilding it, so rows keep their place and state.
@@ -186,7 +175,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     void Row_Click(object sender, MouseButtonEventArgs e)
     {
-        if (((FrameworkElement)sender).DataContext is not AppRowVm row || row.IsOver) return;
+        if (((FrameworkElement)sender).DataContext is not AppRowVm row) return;
         focusKey = focusKey == row.Key ? null : row.Key;
         if (Last != null) Draw(Last);
     }

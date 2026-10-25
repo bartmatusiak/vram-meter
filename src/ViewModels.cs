@@ -84,17 +84,15 @@ public sealed class AppRowVm : Observable
     public required string Key { get; init; }
     public AppGroup App { get; private set; } = null!;
 
-    string title = "", exe = "", overText = "", vram = "", sharedRam = "", choice = "", nowOn = "";
+    string title = "", exe = "", vram = "", sharedRam = "", choice = "", nowOn = "";
     string? moveTip, endTip;
     bool isFocus, canEnd, canMove;
     double barWidth;
-    Brush barFill = Format.Res("OtherStripes"), vramBrush = Format.Res("Fg");
+    Brush barFill = Format.Res("OtherStripes");
 
     public string Title { get => title; set => Set(ref title, value); }
     public string Exe { get => exe; set => Set(ref exe, value); }
-    public string OverText { get => overText; set => Set(ref overText, value); }
     public string Vram { get => vram; set => Set(ref vram, value); }
-    public Brush VramBrush { get => vramBrush; set => Set(ref vramBrush, value); }
     public string SharedRam { get => sharedRam; set => Set(ref sharedRam, value); }
     public double BarWidth { get => barWidth; set => Set(ref barWidth, value); }
     public Brush BarFill { get => barFill; set => Set(ref barFill, value); }
@@ -105,26 +103,25 @@ public sealed class AppRowVm : Observable
     public string? MoveTip { get => moveTip; set => Set(ref moveTip, value); }
     public bool CanEnd { get => canEnd; set => Set(ref canEnd, value); }
     public string? EndTip { get => endTip; set => Set(ref endTip, value); }
-    public bool IsOver { get; private set; }
 
-    public void Update(AppGroup app, Snapshot s, bool over, bool focus, long maxPlain, GpuChoice pref)
+    public void Update(AppGroup app, Snapshot s, bool focus, long max, GpuChoice pref)
     {
         App = app;
-        IsOver = over;
         long ded = app.TotalDedicated;
         Title = app.Title.ToUpperInvariant();
         Exe = System.IO.Path.GetFileName(app.Path ?? app.Name + ".exe") + (app.Procs.Count > 1 ? $" ×{app.Procs.Count}" : "");
-        OverText = over ? "   OVERCOUNTED" : "";
         Vram = Format.Gb(ded);
-        VramBrush = Format.Res(over ? "Warn" : "Fg");
         SharedRam = Format.Gb(app.Shared);
-        BarWidth = over ? 150 : 150.0 * ded / System.Math.Max(1, maxPlain);
+        BarWidth = 150.0 * ded / System.Math.Max(1, max);
         IsFocus = focus;
         BarFill = Format.Res(focus ? "FocusStripes" : "OtherStripes");
 
-        // Where its memory is now: the GPU holding most of it.
-        var on = app.Dedicated.Where(d => d.Value > 0).OrderByDescending(d => d.Value).Select(d => d.Key).ToList();
-        NowOn = on.Count == 0 ? "" : "ON " + string.Join(" + ", on.Select(l => s.Gpus.First(g => g.Luid == l).ShortName.ToUpperInvariant()));
+        // Where it runs: the GPU holding most of its memory. An app drawn on one GPU and shown on a
+        // screen plugged into another keeps a little on that one too, for the frames it hands over.
+        string Short(long luid) => s.Gpus.First(g => g.Luid == luid).ShortName.ToUpperInvariant();
+        var on = app.Dedicated.Where(d => d.Value > 0).OrderByDescending(d => d.Value).ToList();
+        NowOn = on.Count == 0 ? ""
+            : "ON " + Short(on[0].Key) + string.Concat(on.Skip(1).Select(d => $"  +{d.Value / (1024.0 * 1024 * 1024):0.00} GB {Short(d.Key)}"));
         Choice = pref switch
         {
             GpuChoice.PowerSaving => "POWER SAVING",
