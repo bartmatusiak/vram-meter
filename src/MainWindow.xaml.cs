@@ -133,29 +133,48 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         displaysAvailable = pair is var (l, h) && Displays.Available(l, h);
         layout = displaysAvailable && pair is var (low, high) ? Displays.Current(low, high) : DisplayLayout.Unknown;
         foreach (var n in new[] { nameof(DisplaysVisibility), nameof(DisplayButton), nameof(DisplayTip), nameof(SignInText), nameof(SignInTip) }) Raise(n);
+
+        // Beside each GPU's logo: showing now (the one display on, or the main one), or switch to it.
+        foreach (var m in Meters)
+        {
+            if (!displaysAvailable || pair is not var (lo, hi)) { m.Showing = null; continue; }
+            bool isLow = m.Luid == lo.Luid;
+            bool on = layout switch
+            {
+                DisplayLayout.FastOnly or DisplayLayout.FastMain => !isLow,
+                DisplayLayout.PowerSavingOnly or DisplayLayout.PowerSavingMain => isLow,
+                _ => false,
+            };
+            m.Showing = on;
+            var gpu = isLow ? lo : hi;
+            m.SwitchTip = $"Show only the {gpu.ShortName}'s display, and switch the monitor to it: apps opened then start on the {gpu.ShortName}. Apps already running stay where they are.";
+        }
     }
 
-    void Display_Click(object sender, RoutedEventArgs e) => SwitchDisplays();
+    void SwitchHere_Click(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is MeterVm m && Pair is var (low, high))
+            SwitchTo(m.Luid == low.Luid ? low : high);
+    }
 
     public string? SwitchDisplaysLabel => displaysAvailable ? DisplayButton : null;
 
+    // The tray's switch: to whichever GPU's display isn't showing.
     public void SwitchDisplays()
+    {
+        if (Pair is var (low, high)) SwitchTo(layout == DisplayLayout.FastOnly ? low : high);
+    }
+
+    // That GPU's display alone, and the monitor on it.
+    void SwitchTo(Gpu gpu)
     {
         if (Pair is not var (low, high)) return;
         try
         {
-            if (layout == DisplayLayout.FastOnly)
-            {
-                Displays.PowerSavingOnly(low, high);
-                FollowWithInput(low);
-                Say($"Showing only the {low.ShortName}'s display: apps opened now start on the {low.ShortName}.");
-            }
-            else
-            {
-                Displays.FastOnly(low, high);
-                FollowWithInput(high);
-                Say($"Showing only the {high.ShortName}'s display: apps and games opened now start on the {high.ShortName}.");
-            }
+            if (gpu.Luid == low.Luid) Displays.PowerSavingOnly(low, high);
+            else Displays.FastOnly(low, high);
+            FollowWithInput(gpu);
+            Say($"Showing only the {gpu.ShortName}'s display: apps opened now start on the {gpu.ShortName}.");
         }
         catch (InvalidOperationException ex) { Say(ex.Message, warn: true); }
         DisplaysChanged();
@@ -170,7 +189,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             System.Threading.Thread.Sleep(1500);
             if (!MonitorInput.SwitchTo(settings, cable))
-                Dispatcher.BeginInvoke(() => Say("Switch your monitor to its " + cable + " input: it doesn't take commands (turn on DDC/CI in its menu).", warn: true));
+                Dispatcher.BeginInvoke(() => Say("Switch your monitor to its " + Displays.CableName(cable) + " input: it doesn't take commands (turn on DDC/CI in its menu).", warn: true));
         });
     }
 

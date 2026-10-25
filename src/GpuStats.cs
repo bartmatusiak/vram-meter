@@ -121,9 +121,10 @@ public static class GpuStats
             static uint? Ok(int rc, uint value) => rc == 0 ? value : null;
             var power = Ok(nvmlDeviceGetPowerUsage(d, out x), x);
             var limit = Ok(nvmlDeviceGetEnforcedPowerLimit(d, out x), x);
-            uint gen, width, maxGen;
-            string? pcie = nvmlDeviceGetCurrPcieLinkGeneration(d, out gen) == 0 && nvmlDeviceGetCurrPcieLinkWidth(d, out width) == 0
-                ? $"PCIE {gen}.0 ×{width}" + (nvmlDeviceGetMaxPcieLinkGeneration(d, out maxGen) == 0 && maxGen > gen ? $" (UP TO {maxGen}.0)" : "")
+            // The link at its full speed: the card drops it to save power when idle and raises it under
+            // load, so the current one changes from moment to moment.
+            string? pcie = nvmlDeviceGetMaxPcieLinkGeneration(d, out uint gen) == 0 && nvmlDeviceGetMaxPcieLinkWidth(d, out uint width) == 0
+                ? $"PCIE {gen}.0 ×{width}"
                 : null;
             return v with
             {
@@ -166,8 +167,7 @@ public static class GpuStats
         [DllImport("nvml.dll")] static extern int nvmlDeviceGetClockInfo(IntPtr device, int type, out uint mhz);
         [DllImport("nvml.dll")] static extern int nvmlDeviceGetFanSpeed(IntPtr device, out uint percent);
         [DllImport("nvml.dll")] static extern int nvmlDeviceGetTemperature(IntPtr device, int sensor, out uint celsius);
-        [DllImport("nvml.dll")] static extern int nvmlDeviceGetCurrPcieLinkGeneration(IntPtr device, out uint gen);
-        [DllImport("nvml.dll")] static extern int nvmlDeviceGetCurrPcieLinkWidth(IntPtr device, out uint width);
         [DllImport("nvml.dll")] static extern int nvmlDeviceGetMaxPcieLinkGeneration(IntPtr device, out uint gen);
+        [DllImport("nvml.dll")] static extern int nvmlDeviceGetMaxPcieLinkWidth(IntPtr device, out uint width);
     }
 }

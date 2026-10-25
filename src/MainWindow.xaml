@@ -34,8 +34,17 @@
               <Grid>
                 <TextBlock Text="ESTIMATED VRAM USAGE:" FontSize="25" VerticalAlignment="Bottom"/>
                 <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom">
-                  <Path Data="{Binding Logo}" Fill="{Binding LogoBrush}" Height="{Binding LogoHeight}" Stretch="Uniform"
-                        HorizontalAlignment="Right" Visibility="{Binding LogoVisibility}"/>
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <!-- This GPU's display: showing now, or a button to switch to it -->
+                    <TextBlock Text="● SHOWING" FontSize="13" Foreground="{StaticResource Focus}" VerticalAlignment="Center" Margin="0,0,16,0"
+                               Visibility="{Binding ShowingVisibility}" ToolTip="Your monitor is showing this GPU's display: apps opened now start on it."/>
+                    <Button Style="{StaticResource HudButton}" Click="SwitchHere_Click" VerticalAlignment="Center" Margin="0,0,16,0" Padding="12,5"
+                            Visibility="{Binding SwitchVisibility}" ToolTip="{Binding SwitchTip}">
+                      <TextBlock Text="SWITCH HERE" FontSize="13" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                    </Button>
+                    <Path Data="{Binding Logo}" Fill="{Binding LogoBrush}" Height="{Binding LogoHeight}" Width="{Binding LogoWidth}" Stretch="Uniform"
+                          VerticalAlignment="Center" Visibility="{Binding LogoVisibility}"/>
+                  </StackPanel>
                   <TextBlock Text="{Binding Name}" FontSize="14" Foreground="{StaticResource Dim}" HorizontalAlignment="Right" Margin="0,6,0,0"/>
                 </StackPanel>
               </Grid>
@@ -108,23 +117,17 @@
           <TextBlock Text="CLICK AN APP TO MEASURE IT AGAINST THE REST.  GPU PICKS THE CARD IT RUNS ON FROM ITS NEXT START.  END CLOSES IT."
                      FontSize="12" Foreground="{StaticResource Dim}" Margin="0,5,0,0" TextWrapping="Wrap"/>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-        <!-- Which GPU's display is main: apps start on that GPU -->
-        <StackPanel Margin="0,0,14,0" Visibility="{Binding DisplaysVisibility}">
-          <Button Style="{StaticResource HudButton}" Click="Display_Click" ToolTip="{Binding DisplayTip}" Padding="14,6" HorizontalAlignment="Right">
-            <TextBlock Text="{Binding DisplayButton}" FontSize="13" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-          </Button>
-          <Button Style="{StaticResource TextButton}" Click="SignIn_Click" ToolTip="{Binding SignInTip}" HorizontalAlignment="Right" Margin="0,3,0,0">
-            <TextBlock Text="{Binding SignInText}" FontSize="11" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-          </Button>
-        </StackPanel>
-        <StackPanel VerticalAlignment="Center">
+        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
           <Button Style="{StaticResource HudButton}" Click="Sort_Click" IsEnabled="{Binding CanSort}" ToolTip="{Binding SortTip}"
                   ToolTipService.ShowOnDisabled="True" Padding="14,6" HorizontalAlignment="Right">
             <TextBlock Text="WHICH GPU RUNS WHAT" FontSize="13" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
           </Button>
           <TextBlock Text="{Binding AutoSortText}" FontSize="11" Foreground="{StaticResource Dim}" HorizontalAlignment="Right" Margin="0,5,0,0"/>
-        </StackPanel>
+          <!-- Which display Windows starts on (the display switch itself is beside each GPU's logo) -->
+          <Button Style="{StaticResource TextButton}" Click="SignIn_Click" ToolTip="{Binding SignInTip}" HorizontalAlignment="Right" Margin="0,2,0,0"
+                  Visibility="{Binding DisplaysVisibility}">
+            <TextBlock Text="{Binding SignInText}" FontSize="11" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+          </Button>
         </StackPanel>
       </Grid>
 

@@ -44,6 +44,8 @@ public sealed class MeterVm : Observable
     public Geometry? Logo { get => logo; set { Set(ref logo, value); Raise(nameof(LogoVisibility)); } }
     public Brush? LogoBrush { get => logoBrush; set => Set(ref logoBrush, value); }
     public double LogoHeight { get => logoHeight; set => Set(ref logoHeight, value); }
+    double logoWidth;
+    public double LogoWidth { get => logoWidth; set => Set(ref logoWidth, value); }
     public Visibility LogoVisibility => logo == null ? Visibility.Collapsed : Visibility.Visible;
     public string FocusTitle { get => focusTitle; set => Set(ref focusTitle, value); }
     public string FocusValue { get => focusValue; set => Set(ref focusValue, value); }
@@ -75,6 +77,14 @@ public sealed class MeterVm : Observable
     public List<Tile> Tiles { get => tiles; set => Set(ref tiles, value); }
     public List<string> Monitors { get => monitors; set => Set(ref monitors, value); }
 
+    // Its display: showing now, or one to switch to; neither without a display on each GPU.
+    bool? showing;
+    string? switchTip;
+    public bool? Showing { get => showing; set { Set(ref showing, value); Raise(nameof(ShowingVisibility)); Raise(nameof(SwitchVisibility)); } }
+    public Visibility ShowingVisibility => showing == true ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility SwitchVisibility => showing == false ? Visibility.Visible : Visibility.Collapsed;
+    public string? SwitchTip { get => switchTip; set => Set(ref switchTip, value); }
+
     public void UpdateVitals(Gpu gpu, Reading r)
     {
         var v = r.Vitals.GetValueOrDefault(gpu.Luid) ?? new GpuVitals();
@@ -91,7 +101,7 @@ public sealed class MeterVm : Observable
         if (!Tiles.SequenceEqual(t)) Tiles = t;
 
         var m = r.Monitors.Where(x => x.Luid == gpu.Luid).Select(x =>
-            $"{x.Name.ToUpperInvariant()}  ·  {x.Cable}  ·  " +
+            $"{x.Name.ToUpperInvariant()}  ·  {Displays.CableName(x.Cable)}  ·  " +
             (x.Showing is { } s ? $"{s.Width}×{s.Height} @ {System.Math.Round(s.Hz)} HZ" + (x.Main ? "  ·  MAIN" : "") : "CONNECTED, OFF")).ToList();
         if (m.Count == 0) m.Add("NO MONITOR PLUGGED IN");
         if (!Monitors.SequenceEqual(m)) Monitors = m;
@@ -102,17 +112,19 @@ public sealed class MeterVm : Observable
     {
         long other = System.Math.Max(0, used - focus);
         Name = gpu.Name.ToUpperInvariant();
-        // The maker's mark, every one the same height.
-        (string? key, string? brush, double height) mark = gpu.Vendor switch
+        // The maker's mark, every one the same height, at its own width (the eye is 3:2, AMD's arrow
+        // square, Intel's wordmark long): set both, or a row lays them out at no size.
+        (string? key, string? brush, double width) mark = gpu.Vendor switch
         {
-            GpuVendor.Nvidia => ("NvidiaMark", "NvidiaGreen", 34),
+            GpuVendor.Nvidia => ("NvidiaMark", "NvidiaGreen", 51),
             GpuVendor.Amd => ("AmdMark", "AmdBrand", 34),
-            GpuVendor.Intel => ("IntelMark", "IntelBrand", 34),
+            GpuVendor.Intel => ("IntelMark", "IntelBrand", 148),
             _ => (null, null, 0),
         };
         Logo = mark.key == null ? null : (Geometry)Application.Current.Resources[mark.key];
         LogoBrush = mark.brush == null ? null : Format.Res(mark.brush);
-        LogoHeight = mark.height;
+        LogoHeight = 34;
+        LogoWidth = mark.width;
         FocusTitle = (focusTitle ?? "NO APP").ToUpperInvariant();
         FocusValue = Format.Gb(focus);
         OtherValue = Format.Gb(other);

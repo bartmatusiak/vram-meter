@@ -161,6 +161,9 @@ public static class Displays
     [DllImport("user32.dll")]
     static extern int DisplayConfigGetDeviceInfo(ref TargetName info);
 
+    // A cable's full name, for the window (the overlay keeps the short one): DP is DisplayPort.
+    public static string CableName(string cable) => cable == "DP" ? "DISPLAYPORT" : cable;
+
     static string Cable(int tech) => tech switch
     {
         0 => "VGA",
