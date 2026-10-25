@@ -273,37 +273,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         Raise(nameof(AutoSortText));
         Draw(Last);
         if (failed.Count > 0) Say($"Moved {moved.Count}; couldn't move {string.Join(", ", failed)}.", warn: true);
-        else if (moved.Count > 0) Say($"Moved {moved.Count} app{(moved.Count == 1 ? "" : "s")}.");
-
-        // Restart the ones that moved, games aside, so they switch now.
-        if (answer.Restart)
-        {
-            var apps = answer.Changed.Where(i => i.Kind != AppKind.Game && moved.Contains(i.App)).Select(i => i.App).ToList();
-            _ = RestartAll(apps);
-        }
-    }
-
-    // Restarts apps one at a time (an app with several moved helpers once), reporting as it goes.
-    async Task RestartAll(List<AppGroup> apps)
-    {
-        var plans = new List<RestartPlan>();
-        var skipped = new List<string>();
-        foreach (var app in apps)
-        {
-            var (plan, why) = Restarter.PlanFor(app);
-            if (plan == null) skipped.Add($"{app.Title} ({why})");
-            else if (plans.All(p => p.Pid != plan.Pid)) plans.Add(plan);
-        }
-        var problems = new List<string>(skipped);
-        foreach (var plan in plans)
-        {
-            Say($"Restarting {plan.Title}…");
-            var problem = await Task.Run(() => Restarter.Restart(plan));
-            if (problem != null) problems.Add(problem);
-        }
-        if (problems.Count > 0) Say("Restarted what it could. " + string.Join(" ", problems), warn: true);
-        else if (plans.Count > 0) Say($"Restarted {string.Join(", ", plans.Select(p => p.Title))} on their new GPU.");
-        await Refresh();
+        else if (moved.Count > 0) Say($"Moved {moved.Count} app{(moved.Count == 1 ? "" : "s")}. Restart your PC to switch them all.");
     }
 
     // New apps, as they first use a GPU: sorted like Sort would, unless you've set them yourself.
@@ -326,7 +296,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         settings.Save();
         if (moved.Count == 0) return;
-        string text = $"Moved {string.Join(", ", moved)} to the {low.ShortName} from {(moved.Count == 1 ? "its" : "their")} next start.";
+        string text = $"Moved {string.Join(", ", moved)} to the {low.ShortName}. Restart your PC to switch {(moved.Count == 1 ? "it" : "them")}.";
         Say(text);
         if (!IsVisible) AutoSorted?.Invoke(text);
     }
@@ -335,25 +305,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         try
         {
-            bool changed = GpuPreferences.Get(app.Path!) != choice;
             GpuPreferences.Set(app.Path!, choice);
             settings.Decided.Add(app.Path!);
             settings.Save();
             if (Last != null) Draw(Last);
             string where = choice == GpuChoice.Auto ? "the GPU Windows picks" : gpuName ?? "that GPU";
-            Say($"{app.Title} will run on {where} from its next start.");
-            if (!changed) return;
-
-            // It reads its GPU only as it starts: offer to restart it now.
-            var (plan, _) = Restarter.PlanFor(app);
-            if (plan == null) return;
-            bool game = Sorter.Classify(app).Kind == AppKind.Game;
-            string whom = plan.IsHelper ? $"{plan.Title}, which runs {app.Title}," : plan.Title;
-            if (HudDialog.Ask(this, $"RESTART {plan.Title.ToUpperInvariant()} NOW?",
-                    $"So it switches straight away, this closes {whom} and opens it again." +
-                    (game ? " It's a game: you'll leave the match or lose unsaved progress." : " Anything unsaved in it is lost."),
-                    "RESTART", danger: game))
-                _ = RestartAll(new List<AppGroup> { app });
+            Say($"{app.Title} will run on {where}. Restart your PC to switch it.");
         }
         catch (Exception ex) { Say($"Couldn't set {app.Title}'s GPU: {ex.Message}", warn: true); }
     }

@@ -150,23 +150,9 @@ public static class Processes
         return new EndResult(ended, gone, refused);
     }
 
-    internal static string? WhyProtectedNow(int pid, string name)
-    {
-        IntPtr h = OpenProcess(QueryLimited, false, pid);
-        bool critical = false;
-        if (h != IntPtr.Zero)
-        {
-            try { critical = IsProcessCritical(h, out var c) && c; }
-            finally { CloseHandle(h); }
-        }
-        return WhyProtected(pid, name, critical);
-    }
+    static long StartOf(IntPtr h) => GetProcessTimes(h, out var created, out _, out _, out _) ? created : 0;
 
-    internal static bool IsMine(int pid) => SessionOf(pid) == MySession;
-
-    internal static long StartOf(IntPtr h) => GetProcessTimes(h, out var created, out _, out _, out _) ? created : 0;
-
-    internal static string? PathOf(IntPtr h)
+    static string? PathOf(IntPtr h)
     {
         var sb = new StringBuilder(1024);
         int size = sb.Capacity;
@@ -176,13 +162,13 @@ public static class Processes
     static uint? SessionOf(int pid) => ProcessIdToSessionId((uint)pid, out var s) ? s : null;
 
     [DllImport("kernel32.dll", SetLastError = true)]
-    internal static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
+    static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
 
     [DllImport("kernel32.dll")]
-    internal static extern bool CloseHandle(IntPtr h);
+    static extern bool CloseHandle(IntPtr h);
 
     [DllImport("kernel32.dll", SetLastError = true)]
-    internal static extern bool TerminateProcess(IntPtr h, uint exitCode);
+    static extern bool TerminateProcess(IntPtr h, uint exitCode);
 
     [DllImport("kernel32.dll")]
     static extern bool GetProcessTimes(IntPtr h, out long creation, out long exit, out long kernel, out long user);
@@ -194,5 +180,5 @@ public static class Processes
     static extern bool ProcessIdToSessionId(uint pid, out uint session);
 
     [DllImport("kernel32.dll")]
-    internal static extern bool IsProcessCritical(IntPtr h, out bool critical);
+    static extern bool IsProcessCritical(IntPtr h, out bool critical);
 }

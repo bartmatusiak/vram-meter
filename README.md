@@ -28,14 +28,12 @@ Start menu and the desktop, starts it with Windows in the tray, and lists it in 
   RTX 5080.
 - **GPU**: Let Windows decide, Power saving or High performance. This is Windows' own per-app
   setting (Settings > System > Display > Graphics), so it lasts, and an app takes it up the next time
-  it starts. Power saving is a second GPU only when one is on (a CPU's graphics, enabled in the BIOS).
-- **GPU** offers to restart the app so it switches now: the app that runs it (Steam for its web
-  helper) is closed as its X would, ended if it hides in the tray instead, and opened again as it
-  was (a Store app through Windows).
+  it starts: restart the PC to switch everything cleanly. Power saving is a second GPU only when one
+  is on (a CPU's graphics, enabled in the BIOS).
 - **Which GPU runs what**: a column per GPU with every app that can move in the one it will run on:
   games on the high performance GPU, everything else on the power saving one, capture and overlay
   tools (OBS, NVIDIA's overlay, Discord clips) with the games. Click an app to move it across; Apply
-  sets them and, if ticked, restarts the moved apps (never games). A game is an .exe Windows' Game Bar has
+  sets them, and a restart of the PC switches them. A game is an .exe Windows' Game Bar has
   detected as one, or one in a game library (Steam, EA, Epic, GOG, Ubisoft, Riot, Xbox). Its option
   to keep sorting sorts each new app as it first uses a GPU; apps you've set yourself are left alone.
   On a built-in GPU the meter counts the system RAM it borrows, since that is its memory.

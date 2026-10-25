@@ -25,10 +25,9 @@ public sealed class SortDialog : Window
     readonly Gpu low, high;
     readonly StackPanel highList = new(), lowList = new();
     readonly TextBlock summary;
-    readonly CheckBox restart, auto;
+    readonly CheckBox auto;
 
     public List<Assignment> Changed => items.Where(i => i.Changes).ToList();
-    public bool Restart => restart.IsChecked == true;
     public bool AutoSort => auto.IsChecked == true;
 
     SortDialog(Window owner, List<Assignment> items, Gpu low, Gpu high, bool autoSort)
@@ -72,14 +71,9 @@ public sealed class SortDialog : Window
         lanes.Children.Add(Lane(low, "POWER SAVING", lowList, 2));
 
         summary = new TextBlock { FontSize = 13, Foreground = Format.Res("Dim"), Margin = new Thickness(0, 16, 0, 0) };
-        restart = new CheckBox
-        {
-            IsChecked = true, Margin = new Thickness(0, 14, 0, 0),
-            Content = Label("RESTART THE APPS THAT MOVE, SO THEY SWITCH NOW (GAMES ARE LEFT RUNNING; UNSAVED WORK IN THE OTHERS IS LOST)"),
-        };
         auto = new CheckBox
         {
-            IsChecked = autoSort, Margin = new Thickness(0, 10, 0, 0),
+            IsChecked = autoSort, Margin = new Thickness(0, 14, 0, 0),
             Content = Label("SORT NEW APPS THE SAME WAY AS THEY START USING THE GPU (APPS YOU'VE PLACED ARE LEFT ALONE)"),
         };
 
@@ -95,7 +89,7 @@ public sealed class SortDialog : Window
         {
             Children =
             {
-                summary, restart, auto,
+                summary, auto,
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right,
@@ -148,7 +142,7 @@ public sealed class SortDialog : Window
 
         int n = items.Count(i => i.Changes);
         summary.Text = n == 0 ? "NOTHING TO MOVE: EVERY APP IS ALREADY ON ITS GPU."
-            : $"{n} APP{(n == 1 ? "" : "S")} WILL MOVE.";
+            : $"{n} APP{(n == 1 ? "" : "S")} WILL MOVE. RESTART YOUR PC AFTER APPLYING TO SWITCH THEM ALL.";
         summary.Foreground = Format.Res(n == 0 ? "Dim" : "Focus");
     }
 
