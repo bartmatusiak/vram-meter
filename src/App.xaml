@@ -14,7 +14,7 @@
     <SolidColorBrush x:Key="Rule" Color="#14FFFFFF"/>
     <SolidColorBrush x:Key="Edge" Color="#33FFFFFF"/>
     <SolidColorBrush x:Key="NvidiaGreen" Color="#76B900"/>
-    <SolidColorBrush x:Key="AmdBrand" Color="#E9EBE6"/>
+    <SolidColorBrush x:Key="AmdBrand" Color="#ED1C24"/>
     <SolidColorBrush x:Key="IntelBrand" Color="#00C7FD"/>
 
     <!-- Bahnschrift ships with Windows: the condensed HUD face of the game's own meter. -->
