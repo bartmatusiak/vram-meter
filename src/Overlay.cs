@@ -84,7 +84,6 @@ public sealed class Overlay : IDisposable
                 : r.Snapshot.Apps.Where(a => a.Dedicated.GetValueOrDefault(d.Luid) > 0 && Sorter.Classify(a).Kind == AppKind.Game)
                     .OrderByDescending(a => a.Dedicated[d.Luid]).FirstOrDefault();
             var vitals = r.Vitals.GetValueOrDefault(d.Luid);
-            double tempMax = vitals?.TempMaxC ?? 90;
             long used = r.Snapshot.Used.GetValueOrDefault(d.Luid);
             long total = Math.Max(gpu?.Total ?? used, used);
             badge.Set(
@@ -95,8 +94,8 @@ public sealed class Overlay : IDisposable
                 fpsOn == d.Device && front is var (_, rate, _, _) ? $"{rate:0}" : "—",
                 fpsOn == d.Device && front is var (_, _, gen, _) && gen is double share ? (share > 0 ? $"{share * 100:0}%" : "OFF") : "—",
                 $"{busy.GetValueOrDefault(d.Luid):0}%",
-                // The temperature as a share of the card's limit, for the color of its name.
-                vitals?.TempC is double t ? t / tempMax : null,
+                // The temperature, for the color of its name.
+                vitals?.TempC,
                 $"{r.Cpu:0}%",
                 game != null ? $"{game.Dedicated[d.Luid] / GB:0.0} GB" : "—",
                 $"{100.0 * used / Math.Max(1, total):0}%",
@@ -105,16 +104,15 @@ public sealed class Overlay : IDisposable
         }
     }
 
-    // A temperature's color, by its share of the card's limit: the meter's green up to 60%, blending to
-    // amber at 80%, to red at 92% and over (88 °C limit: green to 53, amber at 70, red from 81).
-    static Color HeatColor(double share)
+    // A GPU temperature's color: the meter's green up to 55 °C, blending to amber at 65 °C, to red at 75 °C.
+    static Color HeatColor(double celsius)
     {
         Color green = Color.FromRgb(0x8F, 0xBF, 0x4F), amber = Color.FromRgb(0xE0, 0xA4, 0x3A), red = Color.FromRgb(0xE8, 0x56, 0x4A);
         static Color Mix(Color a, Color b, double f) => Color.FromRgb(
             (byte)(a.R + (b.R - a.R) * f), (byte)(a.G + (b.G - a.G) * f), (byte)(a.B + (b.B - a.B) * f));
-        if (share <= 0.6) return green;
-        if (share <= 0.8) return Mix(green, amber, (share - 0.6) / 0.2);
-        if (share <= 0.92) return Mix(amber, red, (share - 0.8) / 0.12);
+        if (celsius <= 55) return green;
+        if (celsius <= 65) return Mix(green, amber, (celsius - 55) / 10);
+        if (celsius <= 75) return Mix(amber, red, (celsius - 65) / 10);
         return red;
     }
 
