@@ -97,4 +97,3 @@ Installed apps (uninstall there, or `install.ps1 -Remove`). Rerun it after chang
   `Tray.cs` the tray icon; `MainWindow.xaml` the window.
 - `src/make-icon.ps1`: draws `VramMeter.ico`.
 - `install.ps1`: builds and installs; `-Remove` uninstalls.
-
