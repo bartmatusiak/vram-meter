@@ -39,16 +39,47 @@ public sealed class Fps : IDisposable
     // Why there's no FPS, when there isn't.
     public string? Unavailable { get; private set; }
 
-    public Fps()
+    readonly string sessionName;
+
+    public Fps(string sessionName = "VramMeterFps")
     {
+        this.sessionName = sessionName;
         new Thread(Run) { IsBackground = true, Name = "FPS" }.Start();
     }
 
+    // What the session did last, for tests.
+    public string State { get; private set; } = "starting";
+
+    bool disposed;
+
+    // The trace session, started again if something stops it (another program taking its name, ...).
     void Run()
+    {
+        while (!disposed)
+        {
+            Listen();
+            // Done with this session before starting another: left to the garbage collector, its
+            // StopOnDispose would stop the next one, which has the same name.
+            try { session?.Dispose(); }
+            catch (Exception e) when (e is COMException or InvalidOperationException) { }
+            session = null;
+            if (Unavailable != null) return;  // no permission: trying again won't help
+            Thread.Sleep(2000);
+        }
+    }
+
+    void Listen()
     {
         try
         {
-            session = new TraceEventSession("VramMeterFps") { StopOnDispose = true };
+            session = new TraceEventSession(sessionName) { StopOnDispose = true };
+            State = "listening";
+            // A new session's timestamps start again from zero: forget the last one's frames.
+            lock (presents)
+            {
+                presents.Clear();
+                rendered.Clear();
+            }
             session.EnableProvider(Dxgi, TraceEventLevel.Informational);
             session.EnableProvider(D3D9, TraceEventLevel.Informational);
             session.EnableProvider(Reflex, TraceEventLevel.Verbose);
@@ -84,7 +115,8 @@ public sealed class Fps : IDisposable
                     arrived[e.ProcessID] = Environment.TickCount64;
                 }
             };
-            session.Source.Process();  // blocks until disposed
+            session.Source.Process();  // blocks until the session stops
+            State = "stopped";
         }
         catch (UnauthorizedAccessException)
         {
@@ -92,7 +124,12 @@ public sealed class Fps : IDisposable
         }
         catch (Exception e) when (e is COMException or InvalidOperationException)
         {
-            Unavailable = "FPS unavailable: " + e.Message;
+            // Transient (the name still being released, ...): the loop tries again.
+            State = "failed: " + e.GetType().Name + " " + e.Message;
+        }
+        catch (Exception e)
+        {
+            State = "failed: " + e.GetType().Name + " " + e.Message;
         }
     }
 
@@ -151,6 +188,7 @@ public sealed class Fps : IDisposable
 
     public void Dispose()
     {
+        disposed = true;
         try { session?.Dispose(); }
         catch (Exception e) when (e is COMException or InvalidOperationException) { }
     }
