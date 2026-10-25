@@ -21,6 +21,7 @@ public sealed class Overlay : IDisposable
     const int Margin = 16, Snap = 64;
 
     readonly Settings settings;
+    readonly Fps fps = new();
     readonly Dictionary<string, Badge> badges = new();
     List<Displays.Active> displays = new();
     Reading? last;
@@ -55,6 +56,14 @@ public sealed class Overlay : IDisposable
             badges[gone].Close();
             badges.Remove(gone);
         }
+        // The app in front's frame rate, on the display its window is on.
+        var front = fps.Foreground();
+        string? fpsOn = null;
+        if (front is var (_, _, hwnd) && GetWindowRect(hwnd, out var wr))
+        {
+            int cx = (wr.Left + wr.Right) / 2, cy = (wr.Top + wr.Bottom) / 2;
+            fpsOn = displays.FirstOrDefault(s => cx >= s.X && cx < s.X + s.Width && cy >= s.Y && cy < s.Y + s.Height)?.Device;
+        }
         foreach (var d in displays)
         {
             if (!badges.TryGetValue(d.Device, out var badge))
@@ -68,6 +77,7 @@ public sealed class Overlay : IDisposable
                 (gpu?.ShortName ?? "GPU").ToUpperInvariant(),
                 $"  ·  {d.Cable}  ·  {d.Width}×{d.Height} @ {Math.Round(d.Hz)} HZ  ·  ",
                 gpu?.Vendor ?? GpuVendor.Other,
+                fpsOn == d.Device && front is var (_, rate, _) ? $"{rate:0} FPS" : null,
                 $"GPU {busy.GetValueOrDefault(d.Luid):0}%   CPU {r.Cpu:0}%");
             if (!badge.Dragging) Place(badge, d);
         }
@@ -118,12 +128,22 @@ public sealed class Overlay : IDisposable
         return pos;
     }
 
-    public void Dispose() => Hide();
+    public void Dispose()
+    {
+        Hide();
+        fps.Dispose();
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct RECT { public int Left, Top, Right, Bottom; }
+
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
 
     sealed class Badge : Window
     {
         readonly Run name = new() { FontSize = 14 };
         readonly Run detail = new() { FontSize = 12 };
+        readonly Run frames = new() { FontSize = 14 };
         readonly Run use = new() { FontSize = 12 };
         readonly Border mark = new() { Width = 3, Margin = new Thickness(0, 0, 9, 0) };
 
@@ -149,6 +169,7 @@ public sealed class Overlay : IDisposable
             var line = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
             line.Inlines.Add(name);
             line.Inlines.Add(detail);
+            line.Inlines.Add(frames);
             line.Inlines.Add(use);
             var row = new DockPanel();
             DockPanel.SetDock(mark, Dock.Left);
@@ -180,10 +201,11 @@ public sealed class Overlay : IDisposable
             };
         }
 
-        public void Set(string gpu, string rest, GpuVendor vendor, string useText)
+        public void Set(string gpu, string rest, GpuVendor vendor, string? fpsText, string useText)
         {
             name.Text = gpu;
             detail.Text = rest;
+            frames.Text = fpsText != null ? fpsText + "  ·  " : "";
             use.Text = useText;
             mark.Background = Format.Res(vendor switch
             {

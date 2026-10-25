@@ -54,7 +54,21 @@ public sealed class MeterVm : Observable
     public GridLength FreeWidth { get => freeWidth; set => Set(ref freeWidth, value); }
 
     // The GPU's vitals as tiles (label over value), and a line per monitor plugged into it.
-    public sealed record Tile(string Label, string Value);
+    // Each kind of tile is a fixed width, so a figure changing length doesn't shift the rest.
+    public sealed record Tile(string Label, string Value)
+    {
+        public double Width => Label switch
+        {
+            "USE" => 70,
+            "TEMP" => 110,
+            "POWER" => 120,
+            "CORE" => 115,
+            "MEMORY" => 125,
+            "FAN" => 155,
+            "LINK" => 135,
+            _ => 145,
+        };
+    }
 
     List<Tile> tiles = new();
     List<string> monitors = new();

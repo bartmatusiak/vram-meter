@@ -31,6 +31,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Reading Windows' event tracing, for FPS -->
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.*" />
     <Resource Include="..\VramMeter.ico" Link="VramMeter.ico" />
   </ItemGroup>
 
