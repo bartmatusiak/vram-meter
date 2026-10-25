@@ -212,8 +212,7 @@ public sealed class Overlay : IDisposable
                 Children =
                 {
                     first,
-                    Cells(("FPS", fps, 78), ("GPU", gpuUse, 72), ("CPU", cpu, 72)),
-                    Cells(("GAME", game, 100), ("VRAM", vram, 150)),
+                    Cells(("FPS", fps, 64), ("GPU", gpuUse, 70), ("CPU", cpu, 66), ("GAME", game, 96), ("VRAM", vram, 142)),
                 },
             });
             Content = new Border
