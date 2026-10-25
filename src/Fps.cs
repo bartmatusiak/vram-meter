@@ -151,8 +151,15 @@ public sealed class Fps : IDisposable
     {
         lock (presents)
         {
-            // Its busiest swap chain.
-            double best = presents.Where(kv => kv.Key.Pid == pid).Select(kv => Rate(kv.Value)).DefaultIfEmpty(0).Max();
+            // Its swap chains still presenting: a game makes a new one when it changes resolution,
+            // fullscreen or frame generation, and the old one, frozen at its last rate, must not count.
+            var mine = presents.Where(kv => kv.Key.Pid == pid && kv.Value.Count > 0).ToList();
+            if (mine.Count == 0) return null;
+            double newest = mine.Max(kv => kv.Value.Last());
+            foreach (var dead in mine.Where(kv => newest - kv.Value.Last() > 5000).Select(kv => kv.Key).ToList()) presents.Remove(dead);
+            var live = mine.Where(kv => newest - kv.Value.Last() <= Window).ToList();
+            // Its busiest one.
+            double best = live.Select(kv => Rate(kv.Value)).DefaultIfEmpty(0).Max();
             // Stale: the app stopped presenting (minimised, paused on a loading screen that doesn't draw).
             if (best <= 0 || !Fresh(pid)) return null;
             double? generated = null;
@@ -160,7 +167,7 @@ public sealed class Fps : IDisposable
             {
                 // Presented against rendered over the very same span, ending where both have frames: 3 s,
                 // so frame generation pausing itself for a moment (menus, camera cuts) doesn't jolt it.
-                var chain = presents.Where(kv => kv.Key.Pid == pid).OrderByDescending(kv => Rate(kv.Value)).First().Value;
+                var chain = live.OrderByDescending(kv => Rate(kv.Value)).First().Value;
                 double end = Math.Min(chain.Last(), own.Last());
                 int shown = chain.Count(t => t > end - GeneratedWindow && t <= end), made = own.Count(t => t > end - GeneratedWindow && t <= end);
                 if (made > 0 && shown > 0)
