@@ -95,15 +95,27 @@ public sealed class Overlay : IDisposable
                 fpsOn == d.Device && front is var (_, rate, _, _) ? $"{rate:0}" : "—",
                 fpsOn == d.Device && front is var (_, _, gen, _) && gen is double share ? (share > 0 ? $"{share * 100:0}%" : "OFF") : "—",
                 $"{busy.GetValueOrDefault(d.Luid):0}%",
-                vitals?.TempC is double c ? $"{c:0}°C" : null,
-                // Green while cool, amber past 80% of the card's limit, red past 92% (88 °C limit: 70 and 81).
-                vitals?.TempC is double t ? (t >= tempMax * 0.92 ? 2 : t >= tempMax * 0.8 ? 1 : 0) : 0,
+                // The temperature as a share of the card's limit, for the color of its name.
+                vitals?.TempC is double t ? t / tempMax : null,
                 $"{r.Cpu:0}%",
                 game != null ? $"{game.Dedicated[d.Luid] / GB:0.0} GB" : "—",
                 $"{100.0 * used / Math.Max(1, total):0}%",
                 $"OF {total / GB:0.0} GB");
             if (!badge.Dragging) Place(badge, d);
         }
+    }
+
+    // A temperature's color, by its share of the card's limit: the meter's green up to 60%, blending to
+    // amber at 80%, to red at 92% and over (88 °C limit: green to 53, amber at 70, red from 81).
+    static Color HeatColor(double share)
+    {
+        Color green = Color.FromRgb(0x8F, 0xBF, 0x4F), amber = Color.FromRgb(0xE0, 0xA4, 0x3A), red = Color.FromRgb(0xE8, 0x56, 0x4A);
+        static Color Mix(Color a, Color b, double f) => Color.FromRgb(
+            (byte)(a.R + (b.R - a.R) * f), (byte)(a.G + (b.G - a.G) * f), (byte)(a.B + (b.B - a.B) * f));
+        if (share <= 0.6) return green;
+        if (share <= 0.8) return Mix(green, amber, (share - 0.6) / 0.2);
+        if (share <= 0.92) return Mix(amber, red, (share - 0.8) / 0.12);
+        return red;
     }
 
     // A display's resolution by its common name: 1080P, 1440P, 4K, ...; UW for an ultrawide.
@@ -310,7 +322,7 @@ public sealed class Overlay : IDisposable
             };
         }
 
-        public void Set(string gpu, string rest, GpuVendor vendor, bool inGame, string fpsText, string generatedText, string gpuText, string? tempText, int tempLevel, string cpuText, string gameText, string vramText, string vramOfText)
+        public void Set(string gpu, string rest, GpuVendor vendor, bool inGame, string fpsText, string generatedText, string gpuText, double? heat, string cpuText, string gameText, string vramText, string vramOfText)
         {
             var shown = inGame ? Visibility.Visible : Visibility.Collapsed;
             frames.Visibility = framesDivider.Visibility = gameCell.Visibility = shown;
@@ -319,8 +331,9 @@ public sealed class Overlay : IDisposable
             fps.Text = fpsText;
             generated.Text = generatedText;
             gpuUse.Text = gpuText;
-            // The GPU's name in its temperature's color: green while fine, amber when warm, red when hot.
-            name.Foreground = tempText == null ? Format.Res("Fg") : Format.Res(tempLevel switch { 2 => "Hot", 1 => "Warn", _ => "Focus" });
+            // The GPU's name in its temperature's color, blended: green while fine, through amber when warm,
+            // to red near its limit.
+            name.Foreground = heat is double h ? new SolidColorBrush(HeatColor(h)) : Format.Res("Fg");
             cpu.Text = cpuText;
             game.Text = gameText;
             vram.Text = vramText;
