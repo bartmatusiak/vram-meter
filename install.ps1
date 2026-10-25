@@ -59,4 +59,4 @@ Set-ItemProperty $uninstallKey NoModify 1 -Type DWord
 Set-ItemProperty $uninstallKey NoRepair 1 -Type DWord
 
 Start-Process $exe
-"$name installed in $target`: Start menu, starts with Windows in the tray, and listed in Installed apps."
+"$name installed in $target`: Start menu and desktop, starts with Windows in the tray, and listed in Installed apps."
