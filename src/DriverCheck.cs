@@ -1,6 +1,8 @@
 // Whether an NVIDIA card's driver is the latest, from NVIDIA's own driver lookup (the one its download
 // page uses): once a day, in the background, asking only for the card's model and Windows' version.
-// The one thing VRAM Meter reads from the internet; off in the tray menu. AMD has no such lookup.
+// The one thing VRAM Meter reads from the internet; off in the tray menu. AMD and Intel have no such
+// lookup (and their sites turn automated requests away), so for their GPUs the DRIVER tile links to
+// their own update tools instead: AMD's Auto-Detect and Install, Intel's Driver & Support Assistant.
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -24,6 +26,14 @@ public static class DriverCheck
         var digits = string.Concat(windowsVersion.Split('.').Skip(2));
         return digits.Length >= 5 ? $"{digits[^5..^2]}.{digits[^2..]}" : null;
     }
+
+    // Where AMD's and Intel's own tools check a PC for newer drivers; null for any other GPU.
+    public static (string Label, string Url)? VendorTool(Gpu gpu) => gpu.Vendor switch
+    {
+        GpuVendor.Amd => ("CHECK AMD ›", "https://www.amd.com/en/support/download/drivers.html"),
+        GpuVendor.Intel => ("CHECK INTEL ›", "https://www.intel.com/content/www/us/en/support/detect.html"),
+        _ => null,
+    };
 
     // The latest driver for this card, as last looked up; looks again in the background once a day.
     public static LatestDriver? Latest(Gpu gpu, Settings settings)

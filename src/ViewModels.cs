@@ -112,10 +112,13 @@ public sealed class MeterVm : Observable
         if (v.Pcie != null) t.Add(new("LINK", v.Pcie));
         if (v.Driver != null)
         {
-            // NVIDIA's own numbering (617.42), and whether NVIDIA has a newer one.
+            // NVIDIA's own numbering (617.42), and whether NVIDIA has a newer one; for AMD and Intel, a
+            // link to their own update tool.
             var mine = gpu.Vendor == GpuVendor.Nvidia ? DriverCheck.NvidiaVersion(v.Driver) ?? v.Driver : v.Driver;
             var latest = DriverCheck.Latest(gpu, settings);
-            t.Add(latest == null ? new("DRIVER", mine)
+            var tool = DriverCheck.VendorTool(gpu);
+            t.Add(tool is var (label, url) ? new("DRIVER", mine, label, Url: url)
+                : latest == null ? new("DRIVER", mine)
                 : DriverCheck.IsNewer(latest.Version, mine) ? new("DRIVER", mine, "UPDATE AVAILABLE ›", Warn: true, Url: latest.Url)
                 : new("DRIVER", mine, "LATEST"));
         }
