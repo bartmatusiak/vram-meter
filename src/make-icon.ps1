@@ -1,4 +1,5 @@
-# Draws VramMeter.ico: the meter's bar on a dark tile (teal for the game, white for the rest),
+# Draws VramMeter.ico: the meter's bar on a dark tile (teal for the game, white for the rest), with VRAM written
+# above it from 24 px up,
 # at 16, 20, 24, 32, 40, 48, 64 and 256 px. The tray draws the same tile live (src\VramMeter.cs).
 Add-Type -AssemblyName System.Drawing
 $out = Join-Path (Split-Path $PSScriptRoot) 'VramMeter.ico'
@@ -16,7 +17,10 @@ function Draw([int]$size) {
     $g.FillPath((New-Object Drawing.SolidBrush ([Drawing.Color]::FromArgb(255, 4, 16, 14))), $path)
     $g.DrawPath((New-Object Drawing.Pen ([Drawing.Color]::FromArgb(255, 44, 66, 62)), ([math]::Max(1, $s))), $path)
 
-    # The bar: ticks from x 7 to 25, y 10 to 20, 60% teal then 20% white; the frame under them.
+    # With the label (24 px and up) the bar sits lower: frame y 13 to 25, ticks y 15 to 23.
+    $label = $size -ge 24
+    if ($label) { $ft = 13; $fb = 25; $tt = 15; $th = 8 } else { $ft = 8; $fb = 23; $tt = 10; $th = 10 }
+    # The bar: ticks from x 7 to 25, 60% teal then 20% white; the frame under them.
     $step = [math]::Max(2, [math]::Round(2 * $s))
     $tick = [math]::Max(1, [math]::Round($s))
     $left = [math]::Round(7 * $s); $right = [math]::Round(25 * $s)
@@ -24,12 +28,19 @@ function Draw([int]$size) {
         $f = ($tx - $left) / ($right - $left)
         if ($f -ge 0.8) { break }
         $c = if ($f -lt 0.6) { [Drawing.Color]::FromArgb(255, 4, 212, 174) } else { [Drawing.Color]::FromArgb(255, 227, 232, 232) }
-        $g.FillRectangle((New-Object Drawing.SolidBrush $c), $tx, [math]::Round(10 * $s), $tick, [math]::Round(10 * $s))
+        $g.FillRectangle((New-Object Drawing.SolidBrush $c), $tx, [math]::Round($tt * $s), $tick, [math]::Round($th * $s))
     }
     $frame = New-Object Drawing.Pen ([Drawing.Color]::FromArgb(255, 227, 232, 232)), ([math]::Max(1, 1.6 * $s))
     $frame.LineJoin = 'Miter'
-    $pts = @(@(5, 8), @(5, 23), @(27, 23), @(27, 8)) | ForEach-Object { New-Object Drawing.PointF ($_[0] * $s), ($_[1] * $s) }
+    $pts = @(@(5, $ft), @(5, $fb), @(27, $fb), @(27, $ft)) | ForEach-Object { New-Object Drawing.PointF ($_[0] * $s), ($_[1] * $s) }
     $g.DrawLines($frame, [Drawing.PointF[]]$pts)
+    if ($label) {
+        # VRAM in the HUD face, bold, centred above the bar.
+        $g.TextRenderingHint = 'AntiAliasGridFit'
+        $font = New-Object Drawing.Font 'Bahnschrift SemiBold SemiConden', (8.2 * $s), ([Drawing.FontStyle]::Bold), ([Drawing.GraphicsUnit]::Pixel)
+        $fmt = New-Object Drawing.StringFormat; $fmt.Alignment = 'Center'; $fmt.LineAlignment = 'Far'
+        $g.DrawString('VRAM', $font, (New-Object Drawing.SolidBrush ([Drawing.Color]::FromArgb(255, 227, 232, 232))), (New-Object Drawing.RectangleF 0, 0, $size, (11.2 * $s)), $fmt)
+    }
     $g.Dispose()
     $bmp
 }
