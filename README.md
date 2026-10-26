@@ -15,7 +15,7 @@ Run it from anywhere, or install it properly with `install.ps1` (below).
 
 ## What it does
 
-- **The meter**: one bar per GPU. Green is the app you're measuring (the biggest game running, or
+- **The meter**: one bar per GPU. Teal is the app you're measuring (the biggest game running, or
   the app you click), white is everything else, out of the card's total.
 - **GPU stats**: under each meter, the GPU's use, temperature (and its limit), power, core and memory
   clocks, fan, PCIe link and driver, and each monitor plugged into it: name, cable, resolution,

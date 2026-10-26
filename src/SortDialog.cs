@@ -42,7 +42,7 @@ public sealed class SortDialog : Window
         Width = 900;
         Height = System.Math.Min(780, owner.ActualHeight - 40);
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        Background = new SolidColorBrush(Color.FromRgb(0x12, 0x14, 0x12));
+        Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x1D, 0x18));
         BorderBrush = Format.Res("Edge");
         BorderThickness = new Thickness(1);
         UseLayoutRounding = true;
@@ -148,7 +148,7 @@ public sealed class SortDialog : Window
 
     static TextBlock Empty() => new() { Text = "NO APPS", FontSize = 13, Foreground = Format.Res("Dim"), Margin = new Thickness(8, 10, 0, 0) };
 
-    // One app: its name, its .exe and what it is; a green tick and MOVES when it changes GPU.
+    // One app: its name, its .exe and what it is; a teal tick and MOVES when it changes GPU.
     FrameworkElement Card(Assignment i)
     {
         string tag = i.Kind switch { AppKind.Game => "GAME", AppKind.Capture => "CAPTURE / OVERLAY", _ => "" };

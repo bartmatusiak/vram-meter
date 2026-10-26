@@ -18,7 +18,7 @@ public sealed class HudDialog : Window
         SizeToContent = SizeToContent.Height;
         Width = 480;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        Background = new SolidColorBrush(Color.FromRgb(0x12, 0x14, 0x12));
+        Background = new SolidColorBrush(Color.FromRgb(0x0B, 0x1D, 0x18));
         BorderBrush = Format.Res("Edge");
         BorderThickness = new Thickness(1);
         UseLayoutRounding = true;

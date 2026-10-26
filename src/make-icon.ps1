@@ -1,4 +1,4 @@
-# Draws VramMeter.ico: the meter's bar on a dark tile (green for the game, white for the rest),
+# Draws VramMeter.ico: the meter's bar on a dark tile (teal for the game, white for the rest),
 # at 16, 20, 24, 32, 40, 48, 64 and 256 px. The tray draws the same tile live (src\VramMeter.cs).
 Add-Type -AssemblyName System.Drawing
 $out = Join-Path (Split-Path $PSScriptRoot) 'VramMeter.ico'
@@ -13,20 +13,20 @@ function Draw([int]$size) {
     $path.AddArc($x, $x, 2 * $r, 2 * $r, 180, 90); $path.AddArc($x + $w - 2 * $r, $x, 2 * $r, 2 * $r, 270, 90)
     $path.AddArc($x + $w - 2 * $r, $x + $w - 2 * $r, 2 * $r, 2 * $r, 0, 90); $path.AddArc($x, $x + $w - 2 * $r, 2 * $r, 2 * $r, 90, 90)
     $path.CloseFigure()
-    $g.FillPath((New-Object Drawing.SolidBrush ([Drawing.Color]::FromArgb(255, 14, 15, 14))), $path)
-    $g.DrawPath((New-Object Drawing.Pen ([Drawing.Color]::FromArgb(255, 60, 64, 58)), ([math]::Max(1, $s))), $path)
+    $g.FillPath((New-Object Drawing.SolidBrush ([Drawing.Color]::FromArgb(255, 4, 16, 14))), $path)
+    $g.DrawPath((New-Object Drawing.Pen ([Drawing.Color]::FromArgb(255, 44, 66, 62)), ([math]::Max(1, $s))), $path)
 
-    # The bar: ticks from x 7 to 25, y 10 to 20, 60% green then 20% white; the frame under them.
+    # The bar: ticks from x 7 to 25, y 10 to 20, 60% teal then 20% white; the frame under them.
     $step = [math]::Max(2, [math]::Round(2 * $s))
     $tick = [math]::Max(1, [math]::Round($s))
     $left = [math]::Round(7 * $s); $right = [math]::Round(25 * $s)
     for ($tx = $left; $tx -lt $right; $tx += $step) {
         $f = ($tx - $left) / ($right - $left)
         if ($f -ge 0.8) { break }
-        $c = if ($f -lt 0.6) { [Drawing.Color]::FromArgb(255, 143, 191, 79) } else { [Drawing.Color]::FromArgb(255, 233, 235, 230) }
+        $c = if ($f -lt 0.6) { [Drawing.Color]::FromArgb(255, 4, 212, 174) } else { [Drawing.Color]::FromArgb(255, 227, 232, 232) }
         $g.FillRectangle((New-Object Drawing.SolidBrush $c), $tx, [math]::Round(10 * $s), $tick, [math]::Round(10 * $s))
     }
-    $frame = New-Object Drawing.Pen ([Drawing.Color]::FromArgb(255, 217, 220, 213)), ([math]::Max(1, 1.6 * $s))
+    $frame = New-Object Drawing.Pen ([Drawing.Color]::FromArgb(255, 227, 232, 232)), ([math]::Max(1, 1.6 * $s))
     $frame.LineJoin = 'Miter'
     $pts = @(@(5, 8), @(5, 23), @(27, 23), @(27, 8)) | ForEach-Object { New-Object Drawing.PointF ($_[0] * $s), ($_[1] * $s) }
     $g.DrawLines($frame, [Drawing.PointF[]]$pts)

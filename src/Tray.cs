@@ -86,7 +86,7 @@ public sealed class Tray : IDisposable
         if (++ticks == 3) PromoteOnce();
     }
 
-    // The meter in 16-32 px: a dark tile, the frame, and ticks for the focus app (green) and the rest (white).
+    // The meter in 16-32 px: a dark tile, the frame, and ticks for the focus app (teal) and the rest (white).
     void Draw(long focus, long other, long total)
     {
         int size = Forms.SystemInformation.SmallIconSize.Width;
@@ -97,23 +97,23 @@ public sealed class Tray : IDisposable
             float s = size / 32f;
             using (var tile = Rounded(1 * s, 1 * s, 30 * s, 7 * s))
             {
-                g.FillPath(new SolidBrush(Color.FromArgb(14, 15, 14)), tile);
-                g.DrawPath(new Pen(Color.FromArgb(60, 64, 58), Math.Max(1, s)), tile);
+                g.FillPath(new SolidBrush(Color.FromArgb(4, 16, 14)), tile);
+                g.DrawPath(new Pen(Color.FromArgb(44, 66, 62), Math.Max(1, s)), tile);
             }
             g.SmoothingMode = SmoothingMode.None;
             int left = (int)Math.Round(7 * s), right = (int)Math.Round(25 * s);
             int top = (int)Math.Round(10 * s), height = (int)Math.Round(10 * s);
             int step = Math.Max(2, (int)Math.Round(2 * s)), tick = Math.Max(1, (int)Math.Round(s));
             double f1 = total > 0 ? (double)focus / total : 0, f2 = total > 0 ? (double)(focus + other) / total : 0;
-            using var green = new SolidBrush(Color.FromArgb(143, 191, 79));
-            using var white = new SolidBrush(Color.FromArgb(233, 235, 230));
+            using var green = new SolidBrush(Color.FromArgb(4, 212, 174));
+            using var white = new SolidBrush(Color.FromArgb(227, 232, 232));
             for (int x = left; x < right; x += step)
             {
                 double f = (double)(x - left) / (right - left);
                 if (f >= f2) break;
                 g.FillRectangle(f < f1 ? green : white, x, top, tick, height);
             }
-            using var frame = new Pen(Color.FromArgb(217, 220, 213), Math.Max(1, 1.6f * s));
+            using var frame = new Pen(Color.FromArgb(227, 232, 232), Math.Max(1, 1.6f * s));
             g.DrawLines(frame, new[] { new PointF(5 * s, 8 * s), new PointF(5 * s, 23 * s), new PointF(27 * s, 23 * s), new PointF(27 * s, 8 * s) });
         }
         IntPtr next = bmp.GetHicon();

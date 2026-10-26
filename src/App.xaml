@@ -3,15 +3,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              ShutdownMode="OnExplicitShutdown">
   <Application.Resources>
-    <Color x:Key="BgColor">#0B0C0B</Color>
+    <!-- Colours from bartmatusiak.com's style guide: its night background, teal accent, amber and rose. -->
+    <Color x:Key="BgColor">#04100E</Color>
     <SolidColorBrush x:Key="Bg" Color="{StaticResource BgColor}"/>
-    <SolidColorBrush x:Key="Fg" Color="#E9EBE6"/>
-    <SolidColorBrush x:Key="Bright" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="Dim" Color="#8C8F88"/>
-    <SolidColorBrush x:Key="Line" Color="#D9DCD5"/>
-    <SolidColorBrush x:Key="Focus" Color="#8FBF4F"/>
-    <SolidColorBrush x:Key="Warn" Color="#E0A43A"/>
-    <SolidColorBrush x:Key="Hot" Color="#E8564A"/>
+    <SolidColorBrush x:Key="Fg" Color="#E3E8E8"/>
+    <SolidColorBrush x:Key="Bright" Color="#F1F4F4"/>
+    <SolidColorBrush x:Key="Dim" Color="#8FA3A3"/>
+    <SolidColorBrush x:Key="Line" Color="#E3E8E8"/>
+    <SolidColorBrush x:Key="Focus" Color="#04D4AE"/>
+    <SolidColorBrush x:Key="Warn" Color="#FFC72C"/>
+    <SolidColorBrush x:Key="Hot" Color="#D9579B"/>
     <SolidColorBrush x:Key="Rule" Color="#14FFFFFF"/>
     <SolidColorBrush x:Key="Edge" Color="#33FFFFFF"/>
     <SolidColorBrush x:Key="NvidiaGreen" Color="#76B900"/>
@@ -28,7 +29,7 @@
       <DrawingBrush.Drawing>
         <DrawingGroup>
           <GeometryDrawing Brush="Transparent" Geometry="M0,0 H5 V10 H0 Z"/>
-          <GeometryDrawing Brush="#8FBF4F" Geometry="M0,0 H2 V10 H0 Z"/>
+          <GeometryDrawing Brush="#04D4AE" Geometry="M0,0 H2 V10 H0 Z"/>
         </DrawingGroup>
       </DrawingBrush.Drawing>
     </DrawingBrush>
@@ -37,7 +38,7 @@
       <DrawingBrush.Drawing>
         <DrawingGroup>
           <GeometryDrawing Brush="Transparent" Geometry="M0,0 H5 V10 H0 Z"/>
-          <GeometryDrawing Brush="#D9DCD5" Geometry="M0,0 H2 V10 H0 Z"/>
+          <GeometryDrawing Brush="#E3E8E8" Geometry="M0,0 H2 V10 H0 Z"/>
         </DrawingGroup>
       </DrawingBrush.Drawing>
     </DrawingBrush>
@@ -114,7 +115,7 @@
       </Setter>
     </Style>
 
-    <!-- A square box with a green mark; the label brightens on hover. -->
+    <!-- A square box with a teal mark; the label brightens on hover. -->
     <Style TargetType="CheckBox">
       <Setter Property="Foreground" Value="{StaticResource Fg}"/>
       <Setter Property="Cursor" Value="Hand"/>
@@ -151,7 +152,7 @@
     </Style>
 
     <Style TargetType="ToolTip">
-      <Setter Property="Background" Value="#141614"/>
+      <Setter Property="Background" Value="#0B1D18"/>
       <Setter Property="Foreground" Value="{StaticResource Fg}"/>
       <Setter Property="BorderBrush" Value="{StaticResource Edge}"/>
       <Setter Property="FontFamily" Value="{StaticResource Plain}"/>
@@ -164,7 +165,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ContextMenu">
-            <Border Background="#141614" BorderBrush="{StaticResource Edge}" BorderThickness="1" Padding="0,6">
+            <Border Background="#0B1D18" BorderBrush="{StaticResource Edge}" BorderThickness="1" Padding="0,6">
               <StackPanel IsItemsHost="True"/>
             </Border>
           </ControlTemplate>
@@ -203,7 +204,7 @@
       </Setter>
     </Style>
 
-    <!-- A green thumb on a faint track, in the meter's green; brighter while dragged. -->
+    <!-- A teal thumb on a faint track, in the meter's teal; brighter while dragged. -->
     <Style TargetType="ScrollBar">
       <Setter Property="Width" Value="8"/>
       <Setter Property="MinWidth" Value="8"/>
