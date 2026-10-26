@@ -112,17 +112,17 @@ public sealed class Overlay : IDisposable
         }
     }
 
-    // A GPU temperature's color: the meter's teal up to 55 °C, blending to amber at 65 °C, to rose at 75 °C
-    // (bartmatusiak.com's colours).
+    // A GPU temperature's color: green up to 55 °C, blending to amber at 65 °C, to red at 75 °C. These stay the
+    // familiar temperature colours, not the app's teal.
     static Color HeatColor(double celsius)
     {
-        Color teal = Color.FromRgb(0x04, 0xD4, 0xAE), amber = Color.FromRgb(0xFF, 0xC7, 0x2C), rose = Color.FromRgb(0xD9, 0x57, 0x9B);
+        Color green = Color.FromRgb(0x8F, 0xBF, 0x4F), amber = Color.FromRgb(0xE0, 0xA4, 0x3A), red = Color.FromRgb(0xE8, 0x56, 0x4A);
         static Color Mix(Color a, Color b, double f) => Color.FromRgb(
             (byte)(a.R + (b.R - a.R) * f), (byte)(a.G + (b.G - a.G) * f), (byte)(a.B + (b.B - a.B) * f));
-        if (celsius <= 55) return teal;
-        if (celsius <= 65) return Mix(teal, amber, (celsius - 55) / 10);
-        if (celsius <= 75) return Mix(amber, rose, (celsius - 65) / 10);
-        return rose;
+        if (celsius <= 55) return green;
+        if (celsius <= 65) return Mix(green, amber, (celsius - 55) / 10);
+        if (celsius <= 75) return Mix(amber, red, (celsius - 65) / 10);
+        return red;
     }
 
     // A display's resolution by its common name: 1080P, 1440P, 4K, ...; UW for an ultrawide.
@@ -377,8 +377,8 @@ public sealed class Overlay : IDisposable
             fps.Text = fpsText;
             generated.Text = generatedText;
             gpuUse.Text = gpuText;
-            // The GPU's name in its temperature's color, blended: teal while fine, through amber when warm,
-            // to rose near its limit.
+            // The GPU's name in its temperature's color, blended: green while fine, through amber when warm,
+            // to red near its limit.
             name.Foreground = heat is double h ? new SolidColorBrush(HeatColor(h)) : Format.Res("Fg");
             cpu.Text = cpuText;
             game.Text = gameText;
