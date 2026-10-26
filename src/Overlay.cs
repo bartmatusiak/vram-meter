@@ -280,7 +280,7 @@ public sealed class Overlay : IDisposable
             Typography.SetNumeralAlignment(display, FontNumeralAlignment.Tabular);
             var gpuName = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
             gpuName.Inlines.Add(name);
-            // One line, in groups: FPS FG | GPU CPU | GAME VRAM | the display | the GPU.
+            // One line, in groups: FPS FG | GPU CPU | VRAM GAME | the display | the GPU.
             // Measured with 8s: in this face the digits are all one width, and 8 is as wide as any.
             TextBlock Divider() => new()
             {
@@ -291,7 +291,7 @@ public sealed class Overlay : IDisposable
             frames = Cells(("FPS", fps, new[] { "888" }), ("FG", generated, new[] { "OFF", "88%" }));
             framesDivider = Divider();
             gameCell = Cells(("GAME", game, new[] { "88.8 GB" }));
-            gameCell.Margin = new Thickness(0, 0, Gap, 0);
+            gameCell.Margin = new Thickness(Gap, 0, 0, 0);
             var line = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -299,7 +299,7 @@ public sealed class Overlay : IDisposable
                 {
                     frames, framesDivider,
                     Cells(("GPU", gpuUse, new[] { "100%" }), ("CPU", cpu, new[] { "100%" })), Divider(),
-                    gameCell, Cells(("VRAM", vram, new[] { "100%" })), vramOf, Divider(),
+                    Cells(("VRAM", vram, new[] { "100%" })), vramOf, gameCell, Divider(),
                     display, Divider(), gpuName,
                 },
             };
