@@ -17,7 +17,7 @@
     <AssemblyTitle>VRAM Meter</AssemblyTitle>
     <Description>An overlay with your game's VRAM, FPS and GPU load on every display, and a window to end apps and choose the GPU each runs on</Description>
     <Authors>Bart Matusiak</Authors>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
 
     <!-- One VramMeter.exe that needs nothing installed to run. -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
