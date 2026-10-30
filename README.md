@@ -32,13 +32,10 @@ The same line at three temperatures, shown close up: green at 52 °C, amber at 6
 at 100%.
 
 ![Overlay close-up: RTX 5080 in green at 52 °C](docs/screenshots/strip-cool.png)
-$\color{#8FBF4F}{\textsf{Cool}\ \cdot\ \textsf{52}^\circ\textsf{C}}$
 
 ![Overlay close-up: frame generation at 50% and RTX 5080 in amber at 66 °C](docs/screenshots/strip-warm.png)
-$\color{#E0A43A}{\textsf{Warm}\ \cdot\ \textsf{66}^\circ\textsf{C}}$ · frame generation enabled
 
 ![Overlay close-up: GPU at 100% and RTX 5080 in red at 75 °C](docs/screenshots/strip-hot.png)
-$\color{#E8564A}{\textsf{Hot}\ \cdot\ \textsf{75}^\circ\textsf{C}}$ · GPU at 100%
 
 With no game running it stays on the desktop too, down to GPU, CPU, VRAM, the display and the GPU.
 
