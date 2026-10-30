@@ -63,7 +63,21 @@ VIAddVersionKey "LegalCopyright" "© Bart Matusiak"
 !macro CloseApp
   nsExec::Exec 'taskkill /IM VramMeter.exe /F'
   Pop $0
-  Sleep 500
+  ; Then wait (up to 10 s) until Windows lets go of VramMeter.exe, so it can be replaced: a silent update can't
+  ; ask, and a file it can't write is skipped, which would leave the old version in place.
+  StrCpy $R9 0
+  waitloop:
+    IfFileExists "$INSTDIR\VramMeter.exe" 0 waitdone
+    ClearErrors
+    FileOpen $R8 "$INSTDIR\VramMeter.exe" a
+    IfErrors 0 waitopen
+    IntOp $R9 $R9 + 1
+    IntCmp $R9 40 waitdone
+    Sleep 250
+    Goto waitloop
+  waitopen:
+    FileClose $R8
+  waitdone:
 !macroend
 
 Section "${NAME}" SecApp
