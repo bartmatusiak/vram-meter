@@ -39,7 +39,8 @@ public sealed class Tray : IDisposable
         open.Font = new Font(open.Font, FontStyle.Bold);
         startup = new Forms.ToolStripMenuItem("Start with Windows", null, (_, _) =>
         {
-            Settings.StartsWithWindows = !Settings.StartsWithWindows;
+            try { Settings.StartsWithWindows = !Settings.StartsWithWindows; }
+            catch (Exception e) when (e is UnauthorizedAccessException or System.Security.SecurityException) { Notify("Couldn't change Start with Windows: " + e.Message); }
             startup!.Checked = Settings.StartsWithWindows;
         }) { Checked = Settings.StartsWithWindows };
         var displays = new Forms.ToolStripMenuItem("", null, (_, _) => SwitchDisplays?.Invoke());
@@ -97,8 +98,10 @@ public sealed class Tray : IDisposable
             float s = size / 32f;
             using (var tile = Rounded(1 * s, 1 * s, 30 * s, 7 * s))
             {
-                g.FillPath(new SolidBrush(Color.FromArgb(4, 16, 14)), tile);
-                g.DrawPath(new Pen(Color.FromArgb(44, 66, 62), Math.Max(1, s)), tile);
+                using var fill = new SolidBrush(Color.FromArgb(4, 16, 14));
+                using var edge = new Pen(Color.FromArgb(44, 66, 62), Math.Max(1, s));
+                g.FillPath(fill, tile);
+                g.DrawPath(edge, tile);
             }
             g.SmoothingMode = SmoothingMode.None;
             int left = (int)Math.Round(7 * s), right = (int)Math.Round(25 * s);

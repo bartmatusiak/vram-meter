@@ -40,18 +40,30 @@ public sealed class Settings
 
     public static Settings Load()
     {
-        try { return JsonSerializer.Deserialize<Settings>(System.IO.File.ReadAllText(File)) ?? new(); }
+        try
+        {
+            var s = JsonSerializer.Deserialize<Settings>(System.IO.File.ReadAllText(File)) ?? new();
+            s.Decided = new HashSet<string>(s.Decided, StringComparer.OrdinalIgnoreCase);  // JSON gives back a case-sensitive set
+            return s;
+        }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { return new(); }
     }
 
+    // Saved from the window and from the reading in the background (MonitorInput), so one at a time, and written
+    // beside the file then moved over it, so a crash or power cut mid-write can't leave half a file.
     public void Save()
     {
-        try
+        lock (this)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(File)!);
-            System.IO.File.WriteAllText(File, JsonSerializer.Serialize(this));
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(File)!);
+                string temp = File + ".tmp";
+                System.IO.File.WriteAllText(temp, JsonSerializer.Serialize(this));
+                System.IO.File.Move(temp, File, overwrite: true);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException) { }
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 
     // Starting with Windows: a value in HKCU\...\Run, as Task Manager's Startup apps lists it.
@@ -68,6 +80,7 @@ public sealed class Settings
         set
         {
             using var key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true);
+            if (key == null) return;
             if (value) key.SetValue(RunName, $"\"{Environment.ProcessPath}\" --tray");
             else key.DeleteValue(RunName, throwOnMissingValue: false);
         }

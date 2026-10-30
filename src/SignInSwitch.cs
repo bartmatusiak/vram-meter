@@ -15,7 +15,13 @@ public static class SignInSwitch
 
     // Runs off the UI thread; done(what happened) is called once it's over, with null when there was
     // nothing to do.
-    public static void Start(Settings settings, Action<string?> done) => new Thread(() => done(Run(settings))) { IsBackground = true, Name = "Sign-in switch" }.Start();
+    public static void Start(Settings settings, Action<string?> done) => new Thread(() =>
+    {
+        string? message;
+        try { message = Run(settings); }
+        catch (Exception e) { App.Log(e); message = null; }
+        done(message);
+    }) { IsBackground = true, Name = "Sign-in switch" }.Start();
 
     static string? Run(Settings settings)
     {

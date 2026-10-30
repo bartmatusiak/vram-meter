@@ -27,6 +27,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // Nothing that goes wrong in one click or one reading should take the tray app down with it: log it and go on.
+        DispatcherUnhandledException += (_, x) => { Log(x.Exception); x.Handled = true; };
+        AppDomain.CurrentDomain.UnhandledException += (_, x) => Log(x.ExceptionObject as Exception);
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, x) => { Log(x.Exception); x.SetObserved(); };
         bool trayOnly = e.Args.Contains("--tray");
         if (e.Args.Contains("--displays-normal"))
         {
@@ -38,7 +42,12 @@ public partial class App : Application
         instance = new Mutex(true, InstanceName, out bool first);
         if (!first)
         {
-            if (!trayOnly && EventWaitHandle.TryOpenExisting(ShowEventName, out var ev)) ev.Set();
+            // The one running may be a moment from making its show event: give it a second.
+            for (int i = 0; !trayOnly && i < 10; i++)
+            {
+                if (EventWaitHandle.TryOpenExisting(ShowEventName, out var ev)) { ev.Set(); break; }
+                Thread.Sleep(100);
+            }
             Shutdown();
             return;
         }
@@ -85,8 +94,9 @@ public partial class App : Application
         };
         if (!trayOnly) ShowWindow();
 
-        // Signed in on the power saving GPU's display: switch to the fast one once startup apps are up.
-        if (window.Settings.SignInOnPowerSaving && Environment.TickCount64 < 10 * 60 * 1000)
+        // Signed in on the power saving GPU's display: switch to the fast one once startup apps are up. Started at
+        // sign-in is --tray (the Run entry), not time since boot, which Fast Startup and the lock screen don't reset.
+        if (window.Settings.SignInOnPowerSaving && trayOnly)
         {
             SignInSwitch.Start(window.Settings, message => Dispatcher.BeginInvoke(() =>
             {
@@ -98,6 +108,21 @@ public partial class App : Application
     }
 
     const int OverlayHotkey = 1;
+
+    // %LOCALAPPDATA%\VRAM Meter\error.log: what went wrong, kept to the last 256 KB or so.
+    internal static void Log(Exception? e)
+    {
+        if (e == null) return;
+        try
+        {
+            string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VRAM Meter");
+            string file = System.IO.Path.Combine(dir, "error.log");
+            System.IO.Directory.CreateDirectory(dir);
+            if (System.IO.File.Exists(file) && new System.IO.FileInfo(file).Length > 256 * 1024) System.IO.File.Delete(file);
+            System.IO.File.AppendAllText(file, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {typeof(App).Assembly.GetName().Version}\n{e}\n\n");
+        }
+        catch { }
+    }
 
     void ToggleOverlay()
     {
@@ -113,7 +138,10 @@ public partial class App : Application
 
     static void DisplaysNormal()
     {
+        // Only undoes what VRAM Meter did: with starting on the power saving GPU's display never turned on, the
+        // displays are as you set them, and a second screen on the built-in GPU (a laptop's own) stays on.
         var settings = Settings.Load();
+        if (!settings.SignInOnPowerSaving) return;
         settings.SignInOnPowerSaving = false;
         settings.Save();
         var gpus = Dxgi.Gpus();

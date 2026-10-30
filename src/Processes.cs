@@ -81,7 +81,11 @@ public static class Processes
             Pid = pid, Start = start, Name = name, Path = path, Title = TitleOf(name, path),
             ProtectedWhy = WhyProtected(pid, name, critical),
         };
-        lock (Cache) Cache[pid] = info;
+        lock (Cache)
+        {
+            if (Cache.Count > 4096) Cache.Clear();  // ended processes' entries, after days in the tray
+            Cache[pid] = info;
+        }
         return info;
     }
 

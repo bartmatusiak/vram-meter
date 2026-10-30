@@ -17,7 +17,7 @@
     <AssemblyTitle>VRAM Meter</AssemblyTitle>
     <Description>Shows which apps use the GPU's memory, ends them, and moves them between GPUs</Description>
     <Authors>Bart Matusiak</Authors>
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
 
     <!-- One VramMeter.exe that needs nothing installed to run. -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -32,7 +32,7 @@
 
   <ItemGroup>
     <!-- Reading Windows' event tracing, for FPS -->
-    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.*" />
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.8" />
     <Resource Include="..\VramMeter.ico" Link="VramMeter.ico" />
   </ItemGroup>
 

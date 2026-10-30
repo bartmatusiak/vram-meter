@@ -38,9 +38,12 @@ public static class MonitorInput
 
     static bool Remember(Settings settings, string cable, uint code)
     {
-        if (settings.InputCodes.TryGetValue(cable, out var known) && known == code) return false;
-        settings.InputCodes[cable] = code;
-        return true;
+        lock (settings)  // not while Save is writing it out
+        {
+            if (settings.InputCodes.TryGetValue(cable, out var known) && known == code) return false;
+            settings.InputCodes[cable] = code;
+            return true;
+        }
     }
 
     // Switches the monitor to the input a cable is plugged into; false without DDC/CI.

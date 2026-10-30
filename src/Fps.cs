@@ -38,6 +38,19 @@ public sealed class Fps : IDisposable
     // Each process's last frame generation share, and when, held through a second without markers.
     readonly Dictionary<int, (double Share, long At)> lastGenerated = new();
     TraceEventSession? session;
+    long swept;
+
+    // Every app that ever presented (browsers, Discord, each new swap chain) would otherwise stay here for as long
+    // as VRAM Meter runs: once a minute, drop what hasn't presented for a minute. Called under lock (presents).
+    void Sweep()
+    {
+        long now = Environment.TickCount64;
+        if (now - swept < 60_000) return;
+        swept = now;
+        var gone = arrived.Where(kv => now - kv.Value > 60_000).Select(kv => kv.Key).ToHashSet();
+        foreach (var key in presents.Keys.Where(k => gone.Contains(k.Pid)).ToList()) presents.Remove(key);
+        foreach (int pid in gone) { arrived.Remove(pid); rendered.Remove(pid); lastGenerated.Remove(pid); }
+    }
 
     // Why there's no FPS, when there isn't.
     public string? Unavailable { get; private set; }
@@ -116,6 +129,7 @@ public sealed class Fps : IDisposable
                     q.Enqueue(t);
                     while (q.Count > 0 && t - q.Peek() > GeneratedWindow + Window) q.Dequeue();
                     arrived[e.ProcessID] = Environment.TickCount64;
+                    Sweep();
                 }
             };
             session.Source.Process();  // blocks until the session stops

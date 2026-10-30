@@ -111,7 +111,8 @@ public static class GpuStats
     // NVIDIA's management library; absent without an NVIDIA driver, which leaves Windows' figures.
     static class Nvml
     {
-        static bool tried, ready;
+        static bool ready;
+        static long nextTry;
         static readonly Dictionary<string, IntPtr> Devices = new(StringComparer.OrdinalIgnoreCase);
 
         public static GpuVitals Read(string name, GpuVitals v)
@@ -140,8 +141,11 @@ public static class GpuStats
 
         static bool Init()
         {
-            if (tried) return ready;
-            tried = true;
+            // At sign-in NVIDIA's driver may not be up yet: try again each minute until it is. No nvml.dll (not
+            // NVIDIA) is final.
+            if (ready) return true;
+            if (Environment.TickCount64 < nextTry) return false;
+            nextTry = Environment.TickCount64 + 60_000;
             try
             {
                 if (nvmlInit_v2() != 0 || nvmlDeviceGetCount_v2(out uint count) != 0) return false;
@@ -153,8 +157,7 @@ public static class GpuStats
                 }
                 ready = true;
             }
-            catch (DllNotFoundException) { }
-            catch (EntryPointNotFoundException) { }
+            catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException) { nextTry = long.MaxValue; }
             return ready;
         }
 

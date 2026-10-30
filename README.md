@@ -1,5 +1,7 @@
 # VRAM Meter
 
+**[bartmatusiak.com/tech/vram-meter](https://bartmatusiak.com/tech/vram-meter/)** · by [Bart Matusiak](https://bartmatusiak.com/)
+
 A Windows app that shows how much of each GPU's memory is in use and which apps hold it, in the
 look of Call of Duty's VRAM meter. It can end apps, choose the GPU each app runs on, sort games and
 everything else between two GPUs, and show a small overlay on each display.
@@ -9,9 +11,18 @@ wants every last GB of the card and Discord, browsers and launchers don't need t
 
 ## Download
 
-Get `VramMeter.exe` from the [latest release](https://github.com/bartmatusiak/vram-meter/releases/latest).
-It's one self-contained file for Windows 10/11 (x64): nothing else to install, no admin needed.
-Run it from anywhere, or install it properly with `install.ps1` (below).
+**[Download VRAM Meter](https://bartmatusiak.com/tech/vram-meter/)** for Windows 10 and 11 (x64), or get
+`VramMeterSetup.exe` from the [latest release](https://github.com/bartmatusiak/vram-meter/releases/latest).
+
+The setup installs it for you alone, so it needs no admin: in `%LOCALAPPDATA%\Programs\VRAM Meter`, on the Start menu,
+and (your choice) on the desktop and starting with Windows in the tray. It's listed in Settings › Apps › Installed
+apps, where it uninstalls. Running the setup again updates it and keeps your choices. `VramMeterSetup.exe /S`
+installs silently.
+
+The release also has `VramMeter.exe` alone, one self-contained file that runs from anywhere with nothing installed.
+
+Windows may show "Windows protected your PC" the first time, as it does for any app it hasn't seen many
+downloads of: **More info › Run anyway**.
 
 ## What it does
 
@@ -69,7 +80,7 @@ the workaround: apps start on the GPU whose display is main, and stay there when
 
 - No server: nothing outside the app can ask it to do anything. Its one use of the internet: once a
   day it asks NVIDIA's driver lookup (the one NVIDIA's download page uses) for the latest driver for
-  an NVIDIA card, sending only the card's model and Windows' version, to show LATEST or UPDATE AVAILABLE under
+  an NVIDIA card, sending only the card's model (it asks for the 64-bit Windows driver, the same one for Windows 10 and 11), to show LATEST or UPDATE AVAILABLE under
   DRIVER. Off in the tray menu. AMD and Intel have no such lookup, so for their GPUs DRIVER shows a
   CHECK AMD › or CHECK INTEL › link to their own update tools instead; nothing is sent for those.
 - Runs as you, never as administrator, so it can only end what you could end in Task Manager.
@@ -82,9 +93,21 @@ the workaround: apps start on the GPU whose display is main, and stay there when
   GPU's display, your saved display layout (turning it off or uninstalling puts the card's display
   back alone).
 
-## Installing from source
+## Building
 
-Windows 10/11, no admin needed. Building needs the .NET 10 SDK (`winget install Microsoft.DotNet.SDK.10`).
+Needs the .NET 10 SDK (`winget install Microsoft.DotNet.SDK.10`, or `brew install dotnet` on a Mac) and, for the
+setup, NSIS (`winget install NSIS.NSIS` / `brew install makensis`).
+
+```
+installer/build.sh
+```
+
+It builds `publish/VramMeter.exe` and `publish/VramMeterSetup.exe` (the version is the one in
+`src/VramMeter.csproj`), on Windows (Git Bash), macOS or Linux.
+
+### Installing from source
+
+On Windows, no admin needed:
 
 ```
 powershell -ExecutionPolicy Bypass -File install.ps1
@@ -102,4 +125,10 @@ Installed apps (uninstall there, or `install.ps1 -Remove`). Rerun it after chang
   `Load.cs` GPU and CPU use; `Overlay.cs` the overlay;
   `Tray.cs` the tray icon; `MainWindow.xaml` the window.
 - `src/make-icon.ps1`: draws `VramMeter.ico`.
-- `install.ps1`: builds and installs; `-Remove` uninstalls.
+- `installer/`: the setup (`VramMeter.nsi`, NSIS) and `build.sh`, which builds the app and the setup.
+- `install.ps1`: builds and installs from source; `-Remove` uninstalls.
+- If something goes wrong, it's written to `%LOCALAPPDATA%\VRAM Meter\error.log`.
+
+---
+
+Made by [Bart Matusiak](https://bartmatusiak.com/). More at [bartmatusiak.com/tech](https://bartmatusiak.com/tech/).

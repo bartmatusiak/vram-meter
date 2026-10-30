@@ -22,8 +22,20 @@ public static class Displays
     public static bool Available(Gpu? low, Gpu? high)
     {
         if (low == null || high == null || low.Luid == high.Luid) return false;
-        var luids = Paths(QdcAllPaths).Where(p => p.TargetAvailable).Select(p => p.SourceLuid).ToHashSet();
-        return luids.Contains(low.Luid) && luids.Contains(high.Luid);
+        // One monitor cabled to both: the same monitor (by its EDID maker and model) seen on each GPU. Not a laptop's
+        // own panel on one GPU and a screen on the other, or two monitors one per GPU, where switching would turn
+        // off a screen you're looking at.
+        var monitors = new Dictionary<long, HashSet<(ushort, ushort)>>();
+        foreach (var p in Paths(QdcAllPaths).Where(p => p.TargetAvailable))
+        {
+            var r = p.Raw;
+            long luid = ((long)r.targetAdapterHigh << 32) | r.targetAdapterLow;
+            var target = new TargetName { type = 2, size = Marshal.SizeOf<TargetName>(), adapterLow = r.targetAdapterLow, adapterHigh = r.targetAdapterHigh, id = r.targetId };
+            if (DisplayConfigGetDeviceInfo(ref target) != 0 || target.edidManufactureId == 0) continue;  // no EDID: can't tell
+            if (!monitors.TryGetValue(luid, out var set)) monitors[luid] = set = new();
+            set.Add((target.edidManufactureId, target.edidProductCodeId));
+        }
+        return monitors.TryGetValue(low.Luid, out var a) && monitors.TryGetValue(high.Luid, out var b) && a.Overlaps(b);
     }
 
     public static DisplayLayout Current(Gpu low, Gpu high) => Describe(Paths(QdcOnlyActivePaths, out var modes), modes, low, high);

@@ -155,7 +155,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     void TileNote_Click(object sender, RoutedEventArgs e)
     {
         if (((FrameworkElement)sender).DataContext is MeterVm.Tile { Url: string url } && url.StartsWith("https://"))
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+            catch (System.ComponentModel.Win32Exception) { Say("Couldn't open a browser for " + url, warn: true); }
+        }
     }
 
     void SwitchHere_Click(object sender, RoutedEventArgs e)
@@ -278,16 +281,20 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             var r = await Task.Run(() =>
             {
+                // The memory reading is the one that has to work; the rest each go blank on their own if they fail.
                 var snap = monitor.Read();
-                var use = load.Gpus();
-                var vitals = snap.Gpus.ToDictionary(g => g.Luid, GpuStats.Read);
-                var monitors = Displays.Monitors();
-                // Every 10 s or so, learn which input each cable is (DDC/CI is slow).
-                if (readings++ % 10 == 0) MonitorInput.Learn(settings, monitors);
+                var use = Try(load.Gpus, new Dictionary<long, double>());
+                var vitals = snap.Gpus.ToDictionary(g => g.Luid, g => Try(() => GpuStats.Read(g), new GpuVitals()));
+                var monitors = Try(Displays.Monitors, new List<Displays.Monitor>());
+                // Every 10 s or so, learn which input each cable is (DDC/CI is slow): only where there's a display
+                // switch for it to follow.
+                if (readings++ % 10 == 0 && snap.Gpus.FirstOrDefault(g => g.PowerSaving) is Gpu lo && snap.Gpus.FirstOrDefault(g => g.HighPerformance) is Gpu hi
+                    && lo.Luid != hi.Luid && Displays.Available(lo, hi)) Try(() => { MonitorInput.Learn(settings, monitors); return 0; }, 0);
                 return new Reading(snap, use, load.Cpu, vitals, monitors, Displays.ActiveDisplays());
             });
             var s = r.Snapshot;
             Last = s;
+            if (Note.Length > 0) Note = "";
             Raise(nameof(CanSort));
             Raise(nameof(SortTip));
             DisplaysChanged();
@@ -305,6 +312,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             Note = "No reading from Windows' GPU counters: " + ex.Message;
         }
         finally { reading = false; }
+    }
+
+    // One part of a reading, or what to show without it when it fails (logged).
+    static T Try<T>(Func<T> read, T without)
+    {
+        try { return read(); }
+        catch (Exception e) { App.Log(e); return without; }
     }
 
     void Draw(Snapshot s)
@@ -464,10 +478,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (!settings.AutoSort || Pair is not var (low, _)) return;
         var moved = new List<string>();
+        bool changed = false;
         foreach (var app in s.Apps)
         {
             if (app.Path == null || app.ProtectedWhy != null || settings.Decided.Contains(app.Path)) continue;
             settings.Decided.Add(app.Path);
+            changed = true;
             if (GpuPreferences.Get(app.Path) != GpuChoice.Auto) continue;  // set elsewhere: leave it
             var to = Sorter.Target(Sorter.Classify(app).Kind);
             try
@@ -477,7 +493,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
             catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException or System.Security.SecurityException) { }
         }
-        settings.Save();
+        if (changed) settings.Save();
         if (moved.Count == 0) return;
         string text = $"Moved {string.Join(", ", moved)} to the {low.ShortName}. Restart your PC to switch {(moved.Count == 1 ? "it" : "them")}.";
         Say(text);

@@ -16,7 +16,7 @@ public sealed record LatestDriver(string Version, string Released, string Url);
 
 public static class DriverCheck
 {
-    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
+    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = 8 << 20 };
     static Task? running;
 
     // NVIDIA's numbering for a Windows driver version: 32.0.16.1742 -> 617.42 (the last five digits).

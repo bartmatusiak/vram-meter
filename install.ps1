@@ -51,7 +51,7 @@ Set-ItemProperty $runKey $name "`"$exe`" --tray"
 New-Item $uninstallKey -Force | Out-Null
 $size = [int]((Get-ChildItem $target -Recurse -File | Measure-Object Length -Sum).Sum / 1KB)
 @{
-    DisplayName = $name; DisplayVersion = '2.0'; Publisher = 'Bart Matusiak'
+    DisplayName = $name; DisplayVersion = '2.1.0'; Publisher = 'Bart Matusiak'
     DisplayIcon = "$exe,0"; InstallLocation = $target; InstallDate = (Get-Date -Format 'yyyyMMdd')
     Comments = 'Shows which apps use the GPU''s memory, ends them, and moves them between GPUs'
     UninstallString = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$target\install.ps1`" -Remove"

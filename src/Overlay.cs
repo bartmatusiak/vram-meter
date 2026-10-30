@@ -176,7 +176,8 @@ public sealed class Overlay : IDisposable
         var d = displays.FirstOrDefault(s => cx >= s.X && cx < s.X + s.Width && cy >= s.Y && cy < s.Y + s.Height)
                 ?? displays.FirstOrDefault(s => s.Device == badge.Device);
         if (d == null) return;
-        if (d.Device != badge.Device) d = displays.First(s => s.Device == badge.Device);  // each display has its own badge
+        if (d.Device != badge.Device) d = displays.FirstOrDefault(s => s.Device == badge.Device);  // each display has its own badge
+        if (d == null) return;  // its display went while it was being dragged  // each display has its own badge
 
         int x = exact ? Math.Clamp(left - d.X, 0, Math.Max(0, d.Width - w)) : SnapTo(left - d.X, w, d.Width);
         int y = exact ? Math.Clamp(top - d.Y, 0, Math.Max(0, d.Height - h)) : SnapTo(top - d.Y, h, d.Height);
