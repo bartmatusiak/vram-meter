@@ -1,13 +1,52 @@
 # VRAM Meter
 
-**[bartmatusiak.com/tech/vram-meter](https://bartmatusiak.com/tech/vram-meter/)** · by [Bart Matusiak](https://bartmatusiak.com/)
+**A clean in-game overlay for Windows.** Your frame rate, frame generation, GPU, CPU and VRAM in one line across
+the top of the screen, readable over any game and never in the way.
 
-A Windows overlay that puts your game's VRAM, FPS and GPU load on every display, in the look of Call of Duty's
-VRAM meter. Behind it is a window that shows which apps hold each GPU's memory, ends them, and chooses the GPU
-each app runs on.
+**[Download](https://bartmatusiak.com/tech/vram-meter/)** · [bartmatusiak.com/tech/vram-meter](https://bartmatusiak.com/tech/vram-meter/) ·
+Windows 10/11 (x64) · Free · No admin needed
 
-It was made for PCs with two GPUs, a graphics card plus the graphics built into the CPU, where a game wants every
-last GB of the card and Discord, browsers and launchers don't need to be on it.
+![The VRAM Meter overlay in the top-right corner of Halo Infinite: FPS 144, FG off, GPU 92%, CPU 31%, VRAM 64% of 16 GB, game 9.6 GB, DP 1440p at 240 Hz, RTX 5080 in green](docs/screenshots/cool.jpg)
+<sub>Halo Infinite at 1440p, with the overlay in the top-right corner at its actual size.</sub>
+
+I started VRAM Meter to see where my graphics card's memory was going. I built it for my own gaming PC, which has
+two GPUs: a graphics card and the graphics built into the CPU. A game wants every last GB of the card, and Discord,
+browsers and launchers don't need to be on it at all. Along the way the overlay turned into the part I use every
+day: one line of numbers that tells me how a game is really running, without a cluttered panel over the action.
+
+## The overlay
+
+- **FPS and frame generation.** The game's frame rate, and how many of those frames are generated (DLSS Frame
+  Generation, or FSR's in games with Reflex). 50% is 2× frame generation, OFF is none.
+- **GPU, CPU and VRAM.** How busy each one is, how much of the card's memory is in use, and how much of it the game
+  itself is holding.
+- **The display.** Cable, resolution and refresh rate, so you can see at a glance you're actually getting 240 Hz.
+- **Temperature at a glance.** The GPU's name is green while it's cool, turns amber around 65 °C and red past 75 °C.
+- **Out of the way.** Drag it anywhere and it snaps to edges and corners, or hold Shift to place it exactly. Every
+  display gets its own, it never steals focus from the game, and **Alt+O** shows and hides it.
+- **Steady numbers.** Every figure has a fixed-width slot, so nothing jitters as the values change.
+
+### Cool, warm, hot
+
+The same line at three temperatures: green at 52 °C, amber at 66 °C with frame generation on, red at 75 °C with
+the card at 100%.
+
+![Overlay close-up: RTX 5080 in green at 52 °C](docs/screenshots/strip-cool.png)
+![Overlay close-up: frame generation at 50% and RTX 5080 in amber at 66 °C](docs/screenshots/strip-warm.png)
+![Overlay close-up: GPU at 100% and RTX 5080 in red at 75 °C](docs/screenshots/strip-hot.png)
+
+With no game running it stays on the desktop too, down to GPU, CPU, VRAM, the display and the GPU.
+
+![The overlay on a desktop with no game running: GPU 3%, CPU 7%, VRAM 14% of 16 GB, DP 4K at 144 Hz, RTX 5080](docs/screenshots/desktop.jpg)
+
+## The VRAM meter
+
+Open the window for the full picture: every app holding GPU memory, counted by what actually sits in the card's
+own memory, with the biggest game measured against everything else. Click an app to measure it instead, or end one
+you don't need right from the list. Under each meter are the GPU's vitals (use, temperature, power, clocks, fan,
+PCIe link and driver, with a daily check for a newer NVIDIA driver) and every monitor plugged into it.
+
+![The VRAM Meter window: Call of Duty measured on an RTX 5080, the Radeon beside it, and the apps using VRAM with the GPU each runs on](docs/screenshots/window.jpg)
 
 ## Download
 
@@ -27,12 +66,7 @@ The release also has `VramMeter.exe` alone, one self-contained file that runs fr
 Windows may show "Windows protected your PC" the first time, as it does for any app it hasn't seen many
 downloads of: **More info › Run anyway**.
 
-## What it does
-
-**The overlay** is a badge on each display. It shows the game's FPS and VRAM, the GPU's memory, GPU and CPU use,
-and which GPU and cable the display is on, at what resolution and refresh rate. The game is the app in front if
-it's on that GPU, otherwise the biggest game on it. Alt+O shows and hides it from anywhere, games included. Drag
-it where you want it on each display; it snaps to edges and corners, and Shift places it exactly.
+## More detail
 
 FG is the share of frames made by frame generation (DLSS Frame Generation, or FSR's in a game with Reflex): 50%
 is 2× frame generation, OFF is none, and `—` is a game without Reflex, which can't report it. AMD's driver-level
@@ -82,6 +116,18 @@ the workaround: apps start on the GPU whose display is main, and stay there when
   GPU's display, your saved display layout (turning it off or uninstalling puts the card's display
   back alone).
 
+## Built with
+
+| | |
+|---|---|
+| Language | C# on .NET 10 (WPF) |
+| VRAM | Windows' GPU memory counters, per app and per GPU |
+| GPU utilization | Windows' GPU engine counters, per app and per GPU |
+| FPS | Event Tracing for Windows, read with Microsoft's TraceEvent library |
+| Frame generation | NVIDIA Reflex's latency markers (PCLStats) |
+| GPU vitals | NVML, NVIDIA's monitoring library, and DXGI |
+| Monitors | DDC/CI, to switch a monitor's input |
+
 ## Building
 
 Needs the .NET 10 SDK (`winget install Microsoft.DotNet.SDK.10`, or `brew install dotnet` on a Mac) and, for the
@@ -114,6 +160,7 @@ Installed apps (uninstall there, or `install.ps1 -Remove`). Rerun it after chang
   `Load.cs` GPU and CPU use; `Overlay.cs` the overlay;
   `Tray.cs` the tray icon; `Updater.cs` updating itself; `MainWindow.xaml` the window.
 - `src/make-icon.ps1`: draws `VramMeter.ico`.
+- `docs/screenshots/`: the pictures above, drawn the way bartmatusiak.com draws them.
 - `installer/`: the setup (`VramMeter.nsi`, NSIS) and `build.sh`, which builds the app and the setup.
 - `install.ps1`: builds and installs from source; `-Remove` uninstalls.
 - If something goes wrong, it's written to `%LOCALAPPDATA%\VRAM Meter\error.log`.
