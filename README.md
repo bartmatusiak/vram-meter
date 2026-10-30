@@ -130,7 +130,8 @@ the workaround: apps start on the GPU whose display is main, and stay there when
 
 ## Building
 
-Needs the .NET 10 SDK (`winget install Microsoft.DotNet.SDK.10`, or `brew install dotnet` on a Mac) and, for the
+Only for building VRAM Meter yourself: the setup and `VramMeter.exe` need nothing else installed, since the app
+carries its own copy of .NET. Building needs the .NET 10 SDK (`winget install Microsoft.DotNet.SDK.10`, or `brew install dotnet` on a Mac) and, for the
 setup, NSIS (`winget install NSIS.NSIS` / `brew install makensis`).
 
 ```
