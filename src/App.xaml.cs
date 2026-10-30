@@ -23,6 +23,7 @@ public partial class App : Application
     MainWindow? window;
     Tray? tray;
     Overlay? overlay;
+    Updater? updater;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -74,6 +75,26 @@ public partial class App : Application
             window.Settings.Save();
         };
 
+        // A newer VRAM Meter: offered in the window and the tray, and said once per release.
+        updater = new Updater(window.Settings);
+        tray.UpdateLabel = () => updater.Available?.Version.ToString(3);
+        tray.InstallUpdate += InstallUpdate;
+        window.InstallUpdate += InstallUpdate;
+        updater.Found += release =>
+        {
+            window.UpdateVersion = release.Version.ToString(3);
+            tray.Notify($"VRAM Meter {release.Version.ToString(3)} is out. Update from the window or the tray menu.");
+        };
+        updater.Failed += message => { tray.Notify(message); window.UpdateFailed(message); };
+        tray.UpdateCheckOn = () => window.Settings.UpdateCheck;
+        tray.ToggleUpdateCheck += () =>
+        {
+            window.Settings.UpdateCheck = !window.Settings.UpdateCheck;
+            window.Settings.Save();
+            if (window.Settings.UpdateCheck) updater.Start();
+        };
+        updater.Start();
+
         // Alt+O anywhere, games included, shows or hides the overlay.
         var hwnd = new WindowInteropHelper(window).EnsureHandle();
         HwndSource.FromHwnd(hwnd).AddHook((IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled) =>
@@ -108,6 +129,13 @@ public partial class App : Application
     }
 
     const int OverlayHotkey = 1;
+
+    // The setup reopens VRAM Meter as it was: the window if it's open, else in the tray.
+    async void InstallUpdate()
+    {
+        if (updater == null || window == null) return;
+        await updater.Install(trayOnly: !window.IsVisible);
+    }
 
     // %LOCALAPPDATA%\VRAM Meter\error.log: what went wrong, kept to the last 256 KB or so.
     internal static void Log(Exception? e)

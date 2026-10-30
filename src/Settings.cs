@@ -26,6 +26,9 @@ public sealed class Settings
     public DateTime DriverCheckedAt { get; set; }
     public LatestDriver? LatestDriver { get; set; }
 
+    // Checking GitHub for a newer VRAM Meter every 6 hours (see Updater).
+    public bool UpdateCheck { get; set; } = true;
+
     // The badge on each display (see Overlay).
     public bool Overlay { get; set; } = true;
 

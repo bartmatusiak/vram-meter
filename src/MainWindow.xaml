@@ -222,6 +222,11 @@
       </ScrollViewer>
 
       <StackPanel Grid.Row="4" Margin="0,14,0,0">
+        <!-- A newer VRAM Meter (see Updater) -->
+        <Button Style="{StaticResource HudButton}" Click="Update_Click" HorizontalAlignment="Left" Margin="0,0,0,10" Padding="12,5"
+                Visibility="{Binding UpdateVisibility}" ToolTip="{Binding UpdateTip}">
+          <TextBlock Text="{Binding UpdateText}" FontSize="13" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        </Button>
         <TextBlock Text="{Binding Status}" Foreground="{Binding StatusBrush}" FontSize="14" TextWrapping="Wrap"
                    Margin="0,0,0,8" Visibility="{Binding StatusVisibility}"/>
         <TextBlock Text="{Binding Note}" FontFamily="{StaticResource Plain}" FontSize="12" Foreground="{StaticResource Dim}"

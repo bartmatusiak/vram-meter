@@ -109,6 +109,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     // Tells the tray, when the window is hidden, what auto-sort just moved.
     public event Action<string>? AutoSorted;
 
+    // A newer VRAM Meter's version, for the UPDATE TO button (set by App), and installing it.
+    string? updateVersion;
+    public string? UpdateVersion
+    {
+        get => updateVersion;
+        set { updateVersion = value; Raise(nameof(UpdateVersion)); Raise(nameof(UpdateText)); Raise(nameof(UpdateVisibility)); }
+    }
+    public string UpdateText => $"UPDATE TO {updateVersion}";
+    public Visibility UpdateVisibility => updateVersion != null ? Visibility.Visible : Visibility.Collapsed;
+    public string UpdateTip => Updater.Installed
+        ? "Downloads the new VRAM Meter and installs it over this one, keeping your settings, then opens it."
+        : "Opens the new release's page: this VramMeter.exe runs on its own, so there's nothing to install over.";
+    public event Action? InstallUpdate;
+    public void UpdateFailed(string message) => Say(message, warn: true);
+
+    void Update_Click(object sender, RoutedEventArgs e)
+    {
+        if (Updater.Installed) Say($"Updating to {updateVersion}: VRAM Meter reopens when it's done.");
+        InstallUpdate?.Invoke();
+    }
+
     // Which GPU's display is main (see Displays): shown when a display hangs off each GPU.
     DisplayLayout layout;
     bool displaysAvailable;

@@ -1,7 +1,7 @@
 // Whether an NVIDIA card's driver is the latest, from NVIDIA's own driver lookup (the one its download
 // page uses): once a day, in the background, asking only for the card's model and Windows' version.
-// The one thing VRAM Meter reads from the internet; off in the tray menu. AMD and Intel have no such
-// lookup (and their sites turn automated requests away), so for their GPUs the DRIVER tile links to
+// One of the two things VRAM Meter reads from the internet (the other is Updater); off in the tray menu.
+// AMD and Intel have no such lookup (and their sites turn automated requests away), so for their GPUs the DRIVER tile links to
 // their own update tools instead: AMD's Auto-Detect and Install, Intel's Driver & Support Assistant.
 using System;
 using System.Linq;

@@ -2,12 +2,12 @@
 
 **[bartmatusiak.com/tech/vram-meter](https://bartmatusiak.com/tech/vram-meter/)** · by [Bart Matusiak](https://bartmatusiak.com/)
 
-A Windows app that shows how much of each GPU's memory is in use and which apps hold it, in the
-look of Call of Duty's VRAM meter. It can end apps, choose the GPU each app runs on, sort games and
-everything else between two GPUs, and show a small overlay on each display.
+A Windows overlay that puts your game's VRAM, FPS and GPU load on every display, in the look of Call of Duty's
+VRAM meter. Behind it is a window that shows which apps hold each GPU's memory, ends them, and chooses the GPU
+each app runs on.
 
-Made for PCs with two GPUs, a graphics card plus the graphics built into the CPU, where a game
-wants every last GB of the card and Discord, browsers and launchers don't need to be on it.
+It was made for PCs with two GPUs, a graphics card plus the graphics built into the CPU, where a game wants every
+last GB of the card and Discord, browsers and launchers don't need to be on it.
 
 ## Download
 
@@ -19,6 +19,9 @@ and (your choice) on the desktop and starting with Windows in the tray. It's lis
 apps, where it uninstalls. Running the setup again updates it and keeps your choices. `VramMeterSetup.exe /S`
 installs silently.
 
+It updates itself. When a new release is out, the window shows UPDATE TO and the tray menu shows Update to.
+One click downloads the new setup, installs it over this one with your settings kept, and opens it again.
+
 The release also has `VramMeter.exe` alone, one self-contained file that runs from anywhere with nothing installed.
 
 Windows may show "Windows protected your PC" the first time, as it does for any app it hasn't seen many
@@ -26,46 +29,30 @@ downloads of: **More info › Run anyway**.
 
 ## What it does
 
-- **The meter**: one bar per GPU. Teal is the app you're measuring (the biggest game running, or
-  the app you click), white is everything else, out of the card's total.
-- **GPU stats**: under each meter, the GPU's use, temperature (and its limit), power, core and memory
-  clocks, fan, PCIe link and driver, and each monitor plugged into it: name, cable, resolution,
-  refresh rate, main or off. Temperature, power and fan come from the driver's report to Windows (any
-  vendor, as Task Manager reads it); NVIDIA cards add watts, clocks, fan and link from NVIDIA's own
-  monitoring library.
-- **Apps**: a table, sortable by any column (click a heading; again to reverse), of every app holding GPU memory, by what actually sits in the GPU's own memory (Windows'
-  *Local Usage*; its *Dedicated Usage* also charges recorders, overlays and the desktop compositor
-  for every screen they borrow, reaching dozens of GB on a 16 GB card). An app drawn on one GPU
-  and shown on a screen plugged into the other keeps a little on that one for the frames it hands
-  over: `ON RADEON +0.04 GB RTX 5080`. On a built-in GPU the meter counts the system RAM it borrows.
-- **GPU**: the GPU an app runs on, by name, or Auto. This is Windows' own per-app setting
-  (Settings › System › Display › Graphics, which calls them High performance and Power saving), so
-  it lasts; an app takes it up when it next starts. The GPU column turns amber when an app is set to
-  one GPU but running on the other (see the Windows issue below).
-- **Which GPU runs what**: a column per GPU; games on the fast card, capture and overlay tools (OBS,
-  NVIDIA's overlay, Discord clips) with them, everything else on the other GPU. Click an app to move
-  it across. A game is an .exe Windows' Game Bar has detected as one, or one in a game library
-  (Steam, EA, Epic, GOG, Ubisoft, Riot, Xbox). It can also sort each new app as it first uses a GPU.
-- **Displays**: with a monitor cabled to both GPUs, switch which GPU's display is main (apps start on
-  that GPU), and optionally start Windows on the built-in GPU's display, so the apps that start with
-  Windows land there, then show only the card's display once they're up (not saved, so every boot
-  starts the same way). See the Windows issue below for why. The monitor's input follows, over
-  DDC/CI (on in the monitor's menu): to the cable of the GPU whose display is showing. Which HDMI port
-  a cable is in is learned from what the monitor reports; HDMI 1 until then.
-- **Overlay**: a badge on each display: its GPU and cable (with one monitor on two inputs, which one
-  you're looking at), resolution and refresh rate; then the game's FPS and memory, the GPU's memory,
-  and GPU and CPU use. The game is the app in front if it's using that GPU, else the biggest game on
-  it. Drag it anywhere and it snaps to edges and corners, or hold Shift to place it exactly; each
-  display keeps its spot. **Alt+O** shows and hides it from anywhere. **FG** is the share of frames
-  made by frame generation (DLSS Frame Generation, or FSR's in a game with Reflex): the game's own
-  rendered frames, which NVIDIA Reflex reports through its latency markers (PCLStats), against all
-  frames presented; 50% is 2× frame generation, OFF none, — a game without Reflex. AMD's driver-level
-  AFMF adds frames outside the game's presents and can't be seen this way. FPS comes from Windows' event
-  tracing, which needs your account in the Performance Log Users group (Game Bar's FPS "Request
-  access" adds it), then a sign-out and in.
-- **End**: closes every process of an app, after you confirm.
-- **Tray**: the icon is a small live meter; hover for the figures, click for the window, right-click
-  for the display switch, the overlay, Start with Windows and Exit.
+**The overlay** is a badge on each display. It shows the game's FPS and VRAM, the GPU's memory, GPU and CPU use,
+and which GPU and cable the display is on, at what resolution and refresh rate. The game is the app in front if
+it's on that GPU, otherwise the biggest game on it. Alt+O shows and hides it from anywhere, games included. Drag
+it where you want it on each display; it snaps to edges and corners, and Shift places it exactly.
+
+FG is the share of frames made by frame generation (DLSS Frame Generation, or FSR's in a game with Reflex): 50%
+is 2× frame generation, OFF is none, and `—` is a game without Reflex, which can't report it. AMD's driver-level
+AFMF isn't counted. FPS needs your account in the Performance Log Users group (Game Bar's FPS "Request access"
+adds it), then a sign-out and back in.
+
+**The window** has a meter for each GPU: teal for the app you're measuring, white for everything else, out of the
+card's total. Under it are the GPU's use, temperature, power, clocks, fan, PCIe link and driver, and the monitors
+plugged into it.
+
+Below that is every app holding GPU memory, counted by what actually sits in the GPU's own memory. You can:
+
+- end an app (every one of its processes, after you confirm);
+- choose the GPU it runs on, using Windows' own per-app setting, so the choice lasts;
+- sort games onto the fast card and everything else onto the other GPU, by hand or as each new app shows up;
+- with a monitor cabled to both GPUs, switch which GPU's display is main, with the monitor's input following, and
+  start Windows on the built-in GPU's display so the apps that start with Windows land there (see below).
+
+**The tray icon** is a small live meter. Hover for the figures, click for the window, and right-click for the
+overlay, the display switch, Start with Windows, updates and Exit.
 
 ## The Windows issue
 
@@ -78,7 +65,9 @@ the workaround: apps start on the GPU whose display is main, and stay there when
 
 ## Safety
 
-- No server: nothing outside the app can ask it to do anything. Its one use of the internet: once a
+- No server: nothing outside the app can ask it to do anything. It uses the internet for two things. Every 6
+  hours it asks GitHub for VRAM Meter's latest release, and installs one only when you click to; it checks the
+  download against the SHA-256 GitHub publishes for it. Off in the tray menu. And once a
   day it asks NVIDIA's driver lookup (the one NVIDIA's download page uses) for the latest driver for
   an NVIDIA card, sending only the card's model (it asks for the 64-bit Windows driver, the same one for Windows 10 and 11), to show LATEST or UPDATE AVAILABLE under
   DRIVER. Off in the tray menu. AMD and Intel have no such lookup, so for their GPUs DRIVER shows a
@@ -123,7 +112,7 @@ Installed apps (uninstall there, or `install.ps1 -Remove`). Rerun it after chang
   `Processes.cs` names and ends processes; `GpuPreferences.cs` sets an app's GPU; `Sorter.cs` tells
   games from the rest; `Displays.cs` switches and lists displays; `GpuStats.cs` the GPUs' temperature, power, clocks and fan;
   `Load.cs` GPU and CPU use; `Overlay.cs` the overlay;
-  `Tray.cs` the tray icon; `MainWindow.xaml` the window.
+  `Tray.cs` the tray icon; `Updater.cs` updating itself; `MainWindow.xaml` the window.
 - `src/make-icon.ps1`: draws `VramMeter.ico`.
 - `installer/`: the setup (`VramMeter.nsi`, NSIS) and `build.sh`, which builds the app and the setup.
 - `install.ps1`: builds and installs from source; `-Remove` uninstalls.

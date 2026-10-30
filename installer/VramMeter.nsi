@@ -1,8 +1,10 @@
 ; VRAM Meter's setup: VramMeterSetup.exe. Installs for this user only (no admin), like install.ps1 did:
 ; %LOCALAPPDATA%\Programs\VRAM Meter, the Start menu, optionally the desktop and starting with Windows in the tray,
 ; and Settings > Apps > Installed apps, where it uninstalls.
-;   makensis -DVERSION=2.1.0 -DEXE=..\publish\VramMeter.exe installer\VramMeter.nsi   (installer/build.sh does this)
+;   makensis -DVERSION=1.0.0 -DEXE=..\publish\VramMeter.exe installer\VramMeter.nsi   (installer/build.sh does this)
 ; Silent: VramMeterSetup.exe /S (all options on), uninstall "Uninstall.exe" /S.
+; VRAM Meter updating itself runs VramMeterSetup.exe /S /RELAUNCH=window|tray /D=<its folder>: the same install, which
+; then opens the new VRAM Meter as the old one was (see src/Updater.cs).
 
 Unicode true
 ManifestDPIAware true
@@ -83,7 +85,7 @@ Section "${NAME}" SecApp
   WriteRegStr HKCU "${REGKEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${REGKEY}" "URLInfoAbout" "${SITE}"
   WriteRegStr HKCU "${REGKEY}" "HelpLink" "${REPO}"
-  WriteRegStr HKCU "${REGKEY}" "Comments" "Shows which apps use the GPU's memory, ends them, and moves them between GPUs"
+  WriteRegStr HKCU "${REGKEY}" "Comments" "An overlay with your game's VRAM, FPS and GPU load on every display, and a window to end apps and choose the GPU each runs on"
   WriteRegStr HKCU "${REGKEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegStr HKCU "${REGKEY}" "QuietUninstallString" '"$INSTDIR\Uninstall.exe" /S'
   WriteRegDWORD HKCU "${REGKEY}" "NoModify" 1
@@ -100,6 +102,19 @@ SectionEnd
 Section "Start with Windows (in the tray)" SecStartup
   WriteRegStr HKCU "${RUNKEY}" "${NAME}" '"$INSTDIR\VramMeter.exe" --tray'
 SectionEnd
+
+; Reopening VRAM Meter after an update it started (/RELAUNCH=window or tray); a setup run by hand has its Finish page.
+Function .onInstSuccess
+  ${GetParameters} $0
+  ClearErrors
+  ${GetOptions} $0 "/RELAUNCH=" $1
+  IfErrors done
+  StrCmp $1 "tray" 0 +3
+    Exec '"$INSTDIR\VramMeter.exe" --tray'
+    Goto done
+  Exec '"$INSTDIR\VramMeter.exe"'
+  done:
+FunctionEnd
 
 Function .onInit
   ; Updating: keep the choice made last time, instead of turning Start with Windows back on.

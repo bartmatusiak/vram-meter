@@ -25,6 +25,12 @@ public sealed class Tray : IDisposable
     public event Action? ToggleOverlay;
     public event Action? ToggleDriverCheck;
     public Func<bool>? DriverCheckOn;
+    public event Action? ToggleUpdateCheck;
+    public Func<bool>? UpdateCheckOn;
+
+    // A newer VRAM Meter's version to offer, or null (set by App), and installing it.
+    public Func<string?>? UpdateLabel;
+    public event Action? InstallUpdate;
 
     // Whether the overlay is on, for its check mark (set by App).
     public Func<bool>? OverlayShown;
@@ -45,6 +51,9 @@ public sealed class Tray : IDisposable
         }) { Checked = Settings.StartsWithWindows };
         var displays = new Forms.ToolStripMenuItem("", null, (_, _) => SwitchDisplays?.Invoke());
         var overlay = new Forms.ToolStripMenuItem("Overlay on each display (Alt+O)", null, (_, _) => ToggleOverlay?.Invoke());
+        var update = new Forms.ToolStripMenuItem("", null, (_, _) => InstallUpdate?.Invoke());
+        update.Font = new Font(update.Font, FontStyle.Bold);
+        menu.Items.Add(update);
         menu.Items.Add(open);
         menu.Items.Add(displays);
         menu.Items.Add(overlay);
@@ -52,6 +61,15 @@ public sealed class Tray : IDisposable
         var drivers = new Forms.ToolStripMenuItem("Check NVIDIA for driver updates", null, (_, _) => ToggleDriverCheck?.Invoke());
         menu.Items.Add(drivers);
         menu.Opening += (_, _) => drivers.Checked = DriverCheckOn?.Invoke() ?? false;
+        var updates = new Forms.ToolStripMenuItem("Check for VRAM Meter updates", null, (_, _) => ToggleUpdateCheck?.Invoke());
+        menu.Items.Add(updates);
+        menu.Opening += (_, _) =>
+        {
+            updates.Checked = UpdateCheckOn?.Invoke() ?? false;
+            var version = UpdateLabel?.Invoke();
+            update.Visible = version != null;
+            if (version != null) update.Text = $"Update to {version}";
+        };
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Exit?.Invoke());
         menu.Opening += (_, _) =>
